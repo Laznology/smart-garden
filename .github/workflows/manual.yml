@@ -1,0 +1,65 @@
+name: Discord Notification
+on:
+  push:
+    branches:
+      - main  # ganti dengan branch yang kamu inginkan
+  pull_request:
+    types: [opened, closed, reopened]
+    branches:
+      - main  # notifikasi juga untuk pull request ke main
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Mengambil semua riwayat untuk menghitung jumlah commit
+          
+      - name: Get commit details
+        id: commit-details
+        run: |
+          echo "count=$(git rev-list --count HEAD)" >> $GITHUB_OUTPUT
+          echo "date=$(git log -1 --format=%cd --date=format:'%d %b %Y, %H:%M:%S')" >> $GITHUB_OUTPUT
+          echo "files_changed=$(git show --pretty="" --name-only | wc -l)" >> $GITHUB_OUTPUT
+          echo "author_email=$(git log -1 --format=%ae)" >> $GITHUB_OUTPUT
+      
+      - name: Send Discord notification for push
+        if: github.event_name == 'push'
+        uses: tsickert/discord-webhook@v5.4.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          embed-color: 3066993  # Warna hijau untuk notifikasi push
+          content: "📢 **Update baru di repository!**"
+          embed-title: "🚀 Push baru ke **${{ github.repository }}**"
+          embed-description: "**${{ github.actor }}** baru saja melakukan push ke branch `${{ github.ref_name }}`\n\n**📝 Commit Message:**\n```${{ github.event.head_commit.message }}```\n\n**📊 Detail Commit:**\n🕒 Waktu: ${{ steps.commit-details.outputs.date }}\n📁 File yang diubah: ${{ steps.commit-details.outputs.files_changed }}\n🔢 Total commits: ${{ steps.commit-details.outputs.count }}\n\n**🔗 Links:**\n[Lihat Commit](${{ github.event.head_commit.url }}) | [Lihat Repository](https://github.com/${{ github.repository }})"
+          embed-thumbnail-url: "https://avatars.githubusercontent.com/${{ github.actor }}"
+          embed-footer-text: "GitHub Webhook • ${{ github.repository }}"
+          embed-timestamp: "${{ github.event.head_commit.timestamp }}"
+      
+      - name: Send Discord notification for PR opened
+        if: github.event_name == 'pull_request' && github.event.action == 'opened'
+        uses: tsickert/discord-webhook@v5.4.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          embed-color: 9442302  # Warna ungu untuk PR dibuka
+          content: "🔍 **Pull Request baru dibuka!**"
+          embed-title: "📥 PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}"
+          embed-description: "${{ github.event.pull_request.body || 'Tidak ada deskripsi' }}\n\n**👤 Author:** ${{ github.event.pull_request.user.login }}\n**🔀 Branch:** `${{ github.event.pull_request.head.ref }}` → `${{ github.event.pull_request.base.ref }}`\n\n**📊 Perubahan:**\n➕ ${{ github.event.pull_request.additions || '0' }} | ➖ ${{ github.event.pull_request.deletions || '0' }} | 📝 ${{ github.event.pull_request.changed_files || '0' }} file\n\n**🔗 Link:**\n[Lihat Pull Request](${{ github.event.pull_request.html_url }})"
+          embed-thumbnail-url: "https://avatars.githubusercontent.com/${{ github.event.pull_request.user.login }}"
+          embed-footer-text: "GitHub Webhook • ${{ github.repository }}"
+          embed-timestamp: "${{ github.event.pull_request.created_at }}"
+      
+      - name: Send Discord notification for PR merged
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+        uses: tsickert/discord-webhook@v5.4.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          embed-color: 7506394  # Warna biru untuk PR yang dimerge
+          content: "✅ **Pull Request telah dimerge!**"
+          embed-title: "🎉 PR #${{ github.event.pull_request.number }} telah dimerge!"
+          embed-description: "**${{ github.event.pull_request.title }}**\n${{ github.event.pull_request.body || 'Tidak ada deskripsi' }}\n\n**👤 Author:** ${{ github.event.pull_request.user.login }}\n**👤 Merged by:** ${{ github.actor }}\n**🔀 Branch:** `${{ github.event.pull_request.head.ref }}` → `${{ github.event.pull_request.base.ref }}`\n\n**🔗 Link:**\n[Lihat Pull Request](${{ github.event.pull_request.html_url }})"
+          embed-thumbnail-url: "https://avatars.githubusercontent.com/${{ github.event.pull_request.user.login }}"
+          embed-footer-text: "GitHub Webhook • ${{ github.repository }}"
+          embed-timestamp: "${{ github.event.pull_request.merged_at }}"
