@@ -9,12 +9,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Farm {
+  id            Int             @id @default(autoincrement())
+  name          String
+  SensorReading SensorReading[]
+}
+
 model SensorReading {
   id          Int       @id @default(autoincrement())
+  farm_id     Int
   sensor_type String
   value       Int
   createdAt   DateTime  @default(now())
   Analytic    Analytic?
+  Farm        Farm      @relation(fields: [farm_id], references: [id])
 
   @@index([sensor_type])
   @@index([createdAt])
@@ -37,8 +45,8 @@ model Message {
 }
 
 model Topic {
-  id Int @id @default(autoincrement())
-  name String
-  url String  
+  id        Int      @id @default(autoincrement())
+  name      String
+  url       String
   updatedAt DateTime
 }
