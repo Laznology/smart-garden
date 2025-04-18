@@ -1,6 +1,9 @@
 import mqtt, { MqttClient, IClientOptions } from 'mqtt';
 import { PrismaClient } from '@prisma/client';
-import { mqttConfig } from '../config/mqtt';
+import {
+  // mqttSensorConfig, 
+  mqttSensorConfig
+} from '../config/mqtt';
 
 class MQTTService {
   private client: MqttClient;
@@ -12,7 +15,7 @@ class MQTTService {
   }
 
   private initializeMQTTClient() {
-    const { broker, port, clientId, options } = mqttConfig;
+    const { broker, port, clientId, options } = mqttSensorConfig;
     const connectUrl = `mqtt://${broker}:${port}`;
 
     const mqttOptions: IClientOptions = {
@@ -38,7 +41,7 @@ class MQTTService {
   }
 
   private subscribeToTopics() {
-    mqttConfig.topics.forEach(topic => {
+    mqttSensorConfig.topics.forEach(topic => {
       this.client.subscribe(topic, (err: Error | null) => {
         if (err) {
           console.error(`Gagal subscribe ke topic ${topic}:`, err);
@@ -53,15 +56,15 @@ class MQTTService {
     try {
       const payload = JSON.parse(message.toString());
       console.log(`Menerima pesan dari topic ${topic}:`, payload);
+      
 
-      await this.prisma.sensorData.create({
-        data: {
-          topic,
-          payload
-        }
-      });
+      // await this.prisma.sensorReading.create({
+      //   data: {
+          
+      //   }
+      // });
 
-      console.log('Data berhasil disimpan ke database');
+      // console.log('Data berhasil disimpan ke database');
     } catch (error) {
       console.error('Gagal memproses pesan:', error);
     }

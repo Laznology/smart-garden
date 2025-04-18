@@ -9,12 +9,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model SensorData {
-  id        Int      @id @default(autoincrement())
-  topic     String
-  payload   Json
-  createdAt DateTime @default(now())
+model SensorReading {
+  id          Int       @id @default(autoincrement())
+  sensor_type String
+  value       Int
+  createdAt   DateTime  @default(now())
+  Analytic    Analytic?
 
-  @@index([topic])
+  @@index([sensor_type])
   @@index([createdAt])
+}
+
+model Analytic {
+  id              Int           @id @default(autoincrement())
+  label           String
+  trend           String
+  sensorReading   SensorReading @relation(fields: [sensorReadingId], references: [id])
+  sensorReadingId Int           @unique
+  createdAt       DateTime      @default(now())
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  chatId    String
+  text      String
+  createdAt DateTime @default(now())
+}
+
+model Topic {
+  id Int @id @default(autoincrement())
+  name String
+  url String  
+  updatedAt DateTime
 }
