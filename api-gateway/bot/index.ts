@@ -1,93 +1,45 @@
-import {TelegramClient} from "telegramsjs";
-import {telegramConfig} from "./config/telegram";
-import {PrismaClient} from "@prisma/client";
+import { TelegramClient } from "telegramsjs";
+import { telegramConfig } from "./config/telegram";
+import { handleStart } from "./commands/start";
+// import { handleHelp } from "./commands/help";
+// import { handleAddTopic } from "./commands/addtopic";
+import {handleList } from "./commands/listtopic";
 
-const prisma = new PrismaClient();
 
-const bot = new TelegramClient(telegramConfig.token, {pollingTimeout: 1000});
+const bot = new TelegramClient(telegramConfig.token, { pollingTimeout: 1000 });
 console.log("Telegram bot started");
 
-bot.on("ready", async ({user}) => {
-    await user?.setCommands([
-        {command: "start", description: "Memulai bot"},
-        {command: "help", description: "Bantuan"},
-        {command: 'addtopic', description: "Menambahkan topic yang disubscribe"},
-        {command: 'removetopic', description: "Menghapus topic yang disubscribe"},
-        {command: 'listtopic', description: "Menampilkan topic yang disubscribe"},
+async function registerCommands(bot: TelegramClient) {
+    try {
+        await bot.user?.setCommands([
+            { command: "start", description: "Memulai bot" },
+            { command: "help", description: "Bantuan" },
+            { command: 'addtopic', description: "/addtopic [nama-farm] [nama-sensor] [topic-url]" },
+            { command: 'removetopic', description: "/removetopic [nama-sensor]" },
+            { command: 'listtopic', description: "/listtopic Menampilkan topic yang disubscribe" },
+        ]);
+        console.log("Perintah Telegram berhasil didaftarkan.");
+    } catch (error) {
+        console.error("Gagal mendaftarkan perintah Telegram:", error);
+    }
+}
 
-    ])
+bot.on("ready", async ({ user }) => {
+    await registerCommands(bot);
     console.log(`Bot Login sebagai ${user?.username}`);
-})
+});
+
+const commandHandlers: { [command: string]: (message: any) => Promise<void> } = {
+    "/start": (message) => handleStart(bot, message),
+    "/listtopic": (message) => handleList(bot, message),
+};
 
 bot.on("message", async (message) => {
-    if(message.content?.startsWith("/addtopic")) {
-        const commandArgs = message.content.replace("/addtopic", "").trim();
-        const args = [];
-        let currentArg = "";
-        let insideBracket = false;
-
-        for (let i = 0; i < commandArgs.length; i++) {
-            const char = commandArgs[i];
-
-            if (char === '[') {
-                insideBracket = true;
-                continue;
-            } else if (char === ']') {
-                insideBracket = false;
-                if (currentArg.trim()) {
-                    args.push(currentArg.trim());
-                    currentArg = "";
-                }
-                continue;
-            }
-
-            if (!insideBracket && char === ' ') {
-                if (currentArg.trim()) {
-                    args.push(currentArg.trim());
-                    currentArg = "";
-                }
-            } else {
-                currentArg += char;
-            }
-        }
-
-        if (currentArg.trim()) {
-            args.push(currentArg.trim());
-        }
-
-        if (args.length < 3) {
-            await message.reply(
-                "Format salah. Gunakan: /addtopic [nama-farm] [nama-topic] [topic-url]"
-            );
-            return;
-        }
-
-        const [farmName, topicName, topicUrl] = args;
-
-        const sudahAda = await prisma.topic.findFirst({
-            where: { url: topicUrl }
-        });
-
-        if (sudahAda) {
-            await message.reply("Topic sudah ada");
-        } else {
-            await prisma.topic.create({
-                data: {
-                    name: topicName,
-                    url: topicUrl
-                }
-            });
-            await prisma.farm.create({
-                data: {
-                    name: farmName
-                }
-            })
-
-            await message.reply(
-                `Topic berhasil ditambahkan:\nFarm: ${farmName}\nName: ${topicName}\nURL: ${topicUrl}`
-            );
-        }
+    const handler = commandHandlers[message.content?.split(" ")[0] ?? ""]; // Ambil handler berdasarkan perintah
+    if (handler) {
+        await handler(message);
     }
-})
+});
 
-bot.login()
+
+bot.login();
