@@ -46,7 +46,7 @@ model Message {
 
 model Topic {
   id        Int      @id @default(autoincrement())
-  name      String
-  url       String
-  updatedAt DateTime
+  name      String?
+  url       String?
+  updatedAt DateTime @updatedAt
 }

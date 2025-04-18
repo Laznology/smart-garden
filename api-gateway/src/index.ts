@@ -7,7 +7,7 @@ dotenv.config();
 // Create MQTT service instance
 const mqttService = new MQTTService();
 
-// Handle graceful shutdown
+
 process.on('SIGTERM', () => {
   console.log('Menerima sinyal SIGTERM, melakukan cleanup...');
   mqttService.disconnect();

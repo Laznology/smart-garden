@@ -1,34 +1,34 @@
 {
-  "name": "smart-garden-api-gateway",
+  "name": "api-gateway",
   "version": "1.0.0",
-  "description": "Gateway untuk menyimpan data MQTT ke MySQL",
-  "main": "dist/index.js",
+  "description": "Smart Garden API Gateway",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "start": "node dist/src/index.js",
+    "dev": "npx concurrently \"ts-node src/index.ts\" \"ts-node bot/index.ts\"",
+    "start:bot": "node dist/bot/index.js",
+    "dev:bot": "ts-node bot/index.ts",
+    "prisma:generate": "npx prisma generate",
+    "prisma:migrate": "npx prisma migrate dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [
-    "mqtt",
-    "mysql",
-    "gateway",
-    "iot",
-    "smart-garden"
-  ],
+  "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^6.6.0",
-    "@types/node": "^22.14.1",
     "dotenv": "^16.5.0",
     "mqtt": "^5.11.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "node-telegram-bot-api": "^0.66.0"
   },
   "devDependencies": {
     "@types/mqtt": "^0.0.34",
-    "prisma": "^6.6.0"
+    "@types/node": "^22.14.1",
+    "@types/node-telegram-bot-api": "^0.64.7",
+    "concurrently": "^8.2.2",
+    "prisma": "^6.6.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }

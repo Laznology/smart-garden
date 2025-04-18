@@ -2,11 +2,11 @@ name: Discord Notification
 on:
   push:
     branches:
-      - main  # ganti dengan branch yang kamu inginkan
+      - '**'  
   pull_request:
     types: [opened, closed, reopened]
     branches:
-      - main  # notifikasi juga untuk pull request ke main
+      - main  
 
 jobs:
   notify:
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Mengambil semua riwayat untuk menghitung jumlah commit
+          fetch-depth: 0  
           
       - name: Get commit details
         id: commit-details
