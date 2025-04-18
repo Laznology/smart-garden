@@ -19,7 +19,7 @@ model SensorReading {
   id          Int       @id @default(autoincrement())
   farm_id     Int
   sensor_type String
-  value       Int
+  value       Json
   createdAt   DateTime  @default(now())
   Analytic    Analytic?
   Farm        Farm      @relation(fields: [farm_id], references: [id])
