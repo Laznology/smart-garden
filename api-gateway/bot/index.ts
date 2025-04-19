@@ -3,6 +3,7 @@ import { telegramConfig } from "./config/telegram";
 import { handleStart } from "./commands/start";
 import { handleAddTopic } from "./commands/addtopic";
 import { handleList } from "./commands/listtopic";
+import {gemini} from "./config/gemini";
 
 
 const bot = new TelegramClient(telegramConfig.token, { pollingTimeout: 60 });
@@ -51,11 +52,21 @@ bot.on("message", async (message) => {
                 console.error("❌ Chat tidak terdefinisi untuk pesan ini.");
             }
         }
+    } else if (text.startsWith("/")){
+        await bot.sendMessage({ chatId: message.chat?.id, text: `⚠️ Perintah tidak dikenal. Ketik /help untuk bantuan.` });
     } else {
-        await bot.sendMessage({
-            chatId: message.chat?.id || message.author?.id || 0,
-            text: `⚠️ Perintah tidak dikenal. Ketik /help untuk bantuan.`,
-        });
+        try {
+            const result = await gemini
+                .getGenerativeModel({
+                    model: "gemini-2.0-flash"
+                })
+                .generateContent(text)
+
+            const replay = result.response.text();
+            await bot.sendMessage({ chatId: message.chat?.id, text: replay });
+        }catch (err: any){
+
+        }
     }
 });
 

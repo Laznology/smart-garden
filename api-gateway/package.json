@@ -17,10 +17,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/genai": "^0.9.0",
     "@prisma/client": "^6.6.0",
     "dotenv": "^16.5.0",
     "mqtt": "^5.11.0",
-    "node-telegram-bot-api": "^0.66.0"
+    "node-telegram-bot-api": "^0.66.0",
+    "telegramsjs": "^4.8.2"
   },
   "devDependencies": {
     "@types/mqtt": "^0.0.34",
