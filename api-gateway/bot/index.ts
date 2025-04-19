@@ -3,7 +3,7 @@ import { telegramConfig } from "./config/telegram";
 import { handleStart } from "./commands/start";
 import { handleAddTopic } from "./commands/addtopic";
 import { handleList } from "./commands/listtopic";
-import {gemini} from "./config/gemini";
+import { gemini } from "./config/gemini";
 
 
 const bot = new TelegramClient(telegramConfig.token, { pollingTimeout: 60 });
@@ -52,20 +52,48 @@ bot.on("message", async (message) => {
                 console.error("❌ Chat tidak terdefinisi untuk pesan ini.");
             }
         }
-    } else if (text.startsWith("/")){
-        await bot.sendMessage({ chatId: message.chat?.id, text: `⚠️ Perintah tidak dikenal. Ketik /help untuk bantuan.` });
+    } else if (text.startsWith("/")) {
+        await bot.sendMessage({ chatId: message.chat?.id || 0, text: `⚠️ Perintah tidak dikenal. Ketik /help untuk bantuan.` });
     } else {
         try {
-            const result = await gemini
-                .getGenerativeModel({
-                    model: "gemini-2.0-flash"
-                })
-                .generateContent(text)
+            const placeholder = await bot.sendMessage({
+                chatId: message.chat?.id || 0,
+                text: "✍️ Generate...",
+            });
 
-            const replay = result.response.text();
-            await bot.sendMessage({ chatId: message.chat?.id, text: replay });
-        }catch (err: any){
+            let finalText = "";
+            const stream = await gemini.models.generateContentStream({
+                model: "gemini-2.0-flash",
+                contents: [{ role: "user", parts: [{ text }] }],
+            });
 
+            for await (const chunk of stream) {
+                const chunkText = chunk.text ?? ""; 
+                if (chunkText) {
+                    finalText += chunkText;
+                    console.log("📝 Streaming:", chunkText);
+
+                    if (finalText.length % 20 === 0) {
+                        await bot.editMessageText({
+                            chatId: message.chat?.id || 0,
+                            messageId: placeholder.id,
+                            text: finalText + " ▌", 
+                        });
+                    }
+                }
+            }
+
+            await bot.editMessageText({
+                chatId: message.chat?.id || 0,
+                messageId: placeholder.id,
+                text: finalText.trim(),
+            });
+        } catch (err) {
+            console.error("❌ Error streaming Gemini:", err);
+            await bot.sendMessage({
+                chatId: message.chat?.id || message.author?.id || 0,
+                text: "Terjadi kesalahan saat menjawab dari AI.",
+            });
         }
     }
 });
