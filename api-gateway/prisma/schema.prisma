@@ -10,31 +10,45 @@ datasource db {
 }
 
 model Farm {
-  id            Int             @id @default(autoincrement())
-  name          String
-  SensorReading SensorReading[]
+  id             Int             @id @default(autoincrement())
+  name           String
+  sensor_reading SensorReading[]
+  Analytic       Analytic[]
+
+  @@map("farms")
 }
 
 model SensorReading {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   farm_id     Int
-  sensor_type String
-  value       Json
-  createdAt   DateTime  @default(now())
-  Analytic    Analytic?
-  Farm        Farm      @relation(fields: [farm_id], references: [id])
+  sensor_type String // Kelembapan tanah, Kelembapan Udara, Suhu
+  value       Float
+  createdAt   DateTime @default(now())
+  farm        Farm?    @relation(fields: [farm_id], references: [id])
 
   @@index([sensor_type])
   @@index([createdAt])
+  @@map("sensor_readings")
 }
 
 model Analytic {
-  id              Int           @id @default(autoincrement())
-  label           String
-  trend           String
-  sensorReading   SensorReading @relation(fields: [sensorReadingId], references: [id])
-  sensorReadingId Int           @unique
-  createdAt       DateTime      @default(now())
+  id          Int      @id @default(autoincrement())
+  label       String
+  trend       String
+  min         Float
+  max         Float
+  mean        Float
+  sensor_type String // Kelembapan tanah, Kelembapan Udara, Suhu
+  farm_id     Int
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+  farm        Farm     @relation(fields: [farm_id], references: [id])
+
+  @@index([createdAt])
+  @@index([sensor_type])
+  @@index([startDate, endDate])
+  @@map("analytics")
 }
 
 model Message {
@@ -42,11 +56,15 @@ model Message {
   chatId    String
   text      String
   createdAt DateTime @default(now())
+
+  @@map("messages")
 }
 
 model Topic {
   id        Int      @id @default(autoincrement())
   name      String
   url       String
-  updatedAt DateTime
+  updatedAt DateTime @default(now())
+
+  @@map("topics")
 }
