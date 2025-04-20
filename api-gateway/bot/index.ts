@@ -3,8 +3,9 @@ import { telegramConfig } from "./config/telegram";
 import { handleStart } from "./commands/start";
 import { handleAddTopic } from "./commands/addtopic";
 import { handleList } from "./commands/listtopic";
-import { gemini } from "./config/gemini";
-
+import { handleRemoveTopic } from "./commands/removetopic";
+import { initMqttClient } from "./services/mqtt-service";
+import { generateContextualResponse } from "./services/gemini-service";
 
 const bot = new TelegramClient(telegramConfig.token, { pollingTimeout: 60 });
 
@@ -29,11 +30,15 @@ const commandHandlers: {
     "/start": handleStart,
     "/addtopic": handleAddTopic,
     "/listtopic": handleList,
+    "/removetopic": handleRemoveTopic,
 };
 
 bot.on("ready", async ({ user }) => {
     await registerCommands(bot);
     console.log(`🤖 Bot login sebagai @${user?.username}`);
+    
+    // Inisialisasi MQTT Client
+    await initMqttClient(process.env.MQTT_BROKER_URL || "mqtt://localhost:1883");
 });
 
 bot.on("message", async (message) => {
@@ -61,35 +66,18 @@ bot.on("message", async (message) => {
                 text: "✍️ Generate...",
             });
 
-            let finalText = "";
-            const stream = await gemini.models.generateContentStream({
-                model: "gemini-2.0-flash",
-                contents: [{ role: "user", parts: [{ text }] }],
-            });
-
-            for await (const chunk of stream) {
-                const chunkText = chunk.text ?? ""; 
-                if (chunkText) {
-                    finalText += chunkText;
-                    console.log("📝 Streaming:", chunkText);
-
-                    if (finalText.length % 20 === 0) {
-                        await bot.editMessageText({
-                            chatId: message.chat?.id || 0,
-                            messageId: placeholder.id,
-                            text: finalText + " ▌", 
-                        });
-                    }
-                }
-            }
-
+            // Gunakan Gemini service dengan data dari database, tanpa streaming
+            const response = await generateContextualResponse(text);
+            
+            // Update pesan dengan respons yang sudah lengkap
             await bot.editMessageText({
                 chatId: message.chat?.id || 0,
                 messageId: placeholder.id,
-                text: finalText.trim(),
+                text: response.trim(),
             });
+            
         } catch (err) {
-            console.error("❌ Error streaming Gemini:", err);
+            console.error("❌ Error menggunakan Gemini:", err);
             await bot.sendMessage({
                 chatId: message.chat?.id || message.author?.id || 0,
                 text: "Terjadi kesalahan saat menjawab dari AI.",

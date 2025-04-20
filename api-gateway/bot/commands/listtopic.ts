@@ -1,25 +1,47 @@
 import { TelegramClient } from "telegramsjs";
-import { PrismaClient } from "@prisma/client";
+import { dbService } from "../services/database-service";
 
-
-const prisma = new PrismaClient();
-
-export async function handleList(bot: TelegramClient, message: any): Promise<void> {
-    const list = await prisma.topic.findMany();
-
-    if (list.length === 0) {
-        await bot.sendMessage({ chatId: message.chat.id, text: "Tidak ada topik yang terdaftar." });
-        return;
+export async function handleList(bot: TelegramClient, message: any, args: string[]) {
+  const chatId = message.chat?.id || 0;
+  
+  try {
+    // Ambil semua topic dari database
+    const topics = await dbService.getAllTopics();
+    
+    if (topics.length === 0) {
+      await bot.sendMessage({
+        chatId,
+        text: "ℹ️ Belum ada topic yang terdaftar. Gunakan /addtopic untuk menambahkan topic sensor."
+      });
+      return;
     }
-
-    let markdownMessage = "*Daftar Topik:*\n";
-    list.forEach((topic, index) => {
-        markdownMessage += `${index + 1}. *Nama:* ${topic.name || "Tidak ada"}, *URL:* ${topic.url}\n`;
-    });
-
+    
+    // Format list topic untuk ditampilkan
+    let messageText = "📋 Daftar Topic Terdaftar:\n\n";
+    
+    for (const topic of topics) {
+      if (topic.name && topic.url) {
+        const parts = topic.name.split('/');
+        const farmName = parts[0] || 'Unknown';
+        const sensorType = parts[1] || 'Unknown';
+        
+        messageText += `🏡 Farm: ${farmName}\n`;
+        messageText += `📟 Sensor: ${sensorType}\n`;
+        messageText += `🔗 Topic: ${topic.url}\n`;
+        messageText += `📅 Terdaftar: ${topic.updatedAt.toLocaleString("id-ID")}\n\n`;
+      }
+    }
+    
     await bot.sendMessage({
-        chatId: message.chat.id,
-        text: markdownMessage,
-        parseMode: "MarkdownV2"
+      chatId,
+      text: messageText
     });
+    
+  } catch (error) {
+    console.error("❌ Error saat menampilkan daftar topic:", error);
+    await bot.sendMessage({
+      chatId,
+      text: "❌ Terjadi kesalahan saat mengambil daftar topic."
+    });
+  }
 }
