@@ -5,31 +5,31 @@ import MQTTService from './services/mqtt.service';
 dotenv.config();
 
 // Create MQTT service instance
-const mqttService = new MQTTService();
+const sensorMQTTService = new MQTTService('sensor');
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
   console.log('Menerima sinyal SIGTERM, melakukan cleanup...');
-  mqttService.disconnect();
+  sensorMQTTService.disconnect();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('Menerima sinyal SIGINT, melakukan cleanup...');
-  mqttService.disconnect();
+  sensorMQTTService.disconnect();
   process.exit(0);
 });
 
 // Handle unhandled errors
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  mqttService.disconnect();
+  sensorMQTTService.disconnect();
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  mqttService.disconnect();
+  sensorMQTTService.disconnect();
   process.exit(1);
 });
 
