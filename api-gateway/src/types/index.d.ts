@@ -3,3 +3,9 @@ export interface Sensor {
     humidity: number,
 }
 
+export interface Topic {
+    name: string,
+    url: string
+
+}
+
