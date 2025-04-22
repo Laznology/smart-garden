@@ -2,20 +2,24 @@ import mqtt, { MqttClient, IClientOptions } from 'mqtt';
 import { PrismaClient } from '@prisma/client';
 import {
   // mqttSensorConfig, 
-  mqttSensorConfig
+  mqttConfig
 } from '../config/mqtt';
+import { Sensor, Topic } from 'src/types';
 
 class MQTTService {
+  private hasSubscribed = false;
   private client: MqttClient;
   private prisma: PrismaClient;
+  private serviceType: string;
 
-  constructor() {
+  constructor( serviceType : string) {
     this.prisma = new PrismaClient();
+    this.serviceType = serviceType;
     this.initializeMQTTClient();
   }
 
   private initializeMQTTClient() {
-    const { broker, port, clientId, options } = mqttSensorConfig;
+    const { broker, port, clientId, options } = mqttConfig;
     const connectUrl = `mqtt://${broker}:${port}`;
 
     const mqttOptions: IClientOptions = {
@@ -28,7 +32,10 @@ class MQTTService {
   }
 
   private setupEventHandlers() {
-    this.client.on('connect', () => {
+    if (this.hasSubscribed) return;
+    this.hasSubscribed = true;
+
+    this.client.on('connect', async () => {
       console.log('Terhubung ke MQTT broker');
       this.subscribeToTopics();
     });
@@ -40,31 +47,137 @@ class MQTTService {
     this.client.on('message', this.handleMessage.bind(this));
   }
 
-  private subscribeToTopics() {
-    mqttSensorConfig.topics.forEach(topic => {
-      this.client.subscribe(topic, (err: Error | null) => {
-        if (err) {
-          console.error(`Gagal subscribe ke topic ${topic}:`, err);
-        } else {
-          console.log(`Berhasil subscribe ke topic: ${topic}`);
+  private async subscribeToTopics() {
+    try {
+      const topic = await this.prisma.topic.findFirst({
+        where: {
+          name: {
+            contains: this.serviceType,
+          }
+        },
+        orderBy: {
+          id: 'desc',
         }
       });
+      const topicUrl = topic?.url || 'suhu/topic';  
+
+      this.client.subscribe(topicUrl, (err: Error | null) => {
+        if (err) {
+          console.error(`Gagal subscribe ke topic ${topicUrl}:`, err);
+        } else {
+          console.log(`Berhasil subscribe ke topic: ${topicUrl}`);
+        }
+      });
+    } catch (error) {
+      console.error(`Gagal fetch dan subscripe ke topic`);
+    }
+  }
+
+  private async handleMessage(topic: string, message: Buffer) {
+    try {
+      const payload : Sensor = JSON.parse(message.toString());
+      console.log(`topic: ${topic}, ${payload}`);
+      await this.prisma.sensorReading.createMany({
+        data: [{
+          farm_id: 1,
+          value: payload.humidity,
+          sensor_type: "Humidity",
+        }, {
+          farm_id: 1,
+          value: payload.temperature,
+          sensor_type: "Temperature",
+        }]
+      });
+      console.log('Data berhasil disimpan ke database');
+    } catch (error) {
+      console.error('Gagal memproses pesan:', error);
+    }
+  }
+
+  public async refreshSubscription() {
+    console.log('Memperbarui subscription MQTT sensor...');
+    this.client.unsubscribe('#'); // Unsubscribe from all topics (or the current one)
+    await this.subscribeToTopics();
+  }
+
+  public disconnect() {
+    if (this.client) {
+      this.client.end();
+    }
+    this.prisma.$disconnect();
+  }
+}
+
+class DynamicTopicController {
+  private hasSubscribed = false;
+  private client: MqttClient;
+  private prisma: PrismaClient;
+  private mqttService: MQTTService;
+
+  constructor(mqttService: MQTTService) {
+    this.prisma = new PrismaClient();
+    this.mqttService = mqttService;
+    this.initializeMQTTClient();
+  }
+  
+  private initializeMQTTClient() {
+    const { broker, port, options } = mqttConfig;
+    const connectUrl = `mqtt://${broker}:${port}`;
+
+    const mqttOptions: IClientOptions = {
+      ...options,
+      clientId: `admin-${Math.random().toString(16)}`
+    };
+    this.client = mqtt.connect(connectUrl, mqttOptions);
+
+    this.setupEventHandlers();
+  }
+  
+  private setupEventHandlers() {
+    if (this.hasSubscribed) return;
+    this.hasSubscribed = true;
+
+    const topic = mqttConfig.topic;
+    this.client.on('connect', () => {
+      console.log('Terhubung ke MQTT broker');
+      this.subscribeToTopic(topic || 'topic/suhu');
+    });
+
+    this.client.on('error', (error: Error) => {
+      console.error('Kesalahan koneksi MQTT:', error);
+    });
+
+    this.client.on('message', this.handleMessage.bind(this));
+  }
+
+  private subscribeToTopic(topic: string) {
+    this.client.subscribe(topic, (err: Error | null) => {
+      if (err) {
+        console.error(`Gagal subscribe ke topic ${topic}:`, err);
+      } else {
+        console.log(`Berhasil subscribe ke topic: ${topic}`);
+      }
     });
   }
 
   private async handleMessage(topic: string, message: Buffer) {
     try {
-      const payload = JSON.parse(message.toString());
-      console.log(`Menerima pesan dari topic ${topic}:`, payload);
-      
+      const payload : Topic = JSON.parse(message.toString());
+      console.log(`topic: ${topic}, ${payload}`);
+      await this.prisma.topic.create({
+        data: {
+          name: payload.name,
+          url: payload.url
+        }
+      });
+      console.log('Data berhasil disimpan ke database');
 
-      // await this.prisma.sensorReading.create({
-      //   data: {
-          
-      //   }
-      // });
-
-      // console.log('Data berhasil disimpan ke database');
+      try {
+        await this.mqttService.refreshSubscription();
+        console.log('Subscription untuk topic MQTT sudah di-refresh!');
+      } catch (error) {
+        console.error('Gagal melakukan refresh subscription:', error);
+      }
     } catch (error) {
       console.error('Gagal memproses pesan:', error);
     }
@@ -78,4 +191,4 @@ class MQTTService {
   }
 }
 
-export default MQTTService;
+export {MQTTService, DynamicTopicController};
