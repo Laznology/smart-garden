@@ -1,4 +1,4 @@
-import { gemini, geminiModel } from '../config/gemini';
+import {  geminiModel } from '../config/gemini';
 import { dbService } from './database-service';
 
 

@@ -1,7 +1,8 @@
 import { TelegramClient } from "telegramsjs";
+import { TelegramMessage } from "../../src/types/telegram";
 
-export async function handleStart(bot: TelegramClient, message: any) {
-    if (message.author) {
+export async function handleStart(bot: TelegramClient, message: TelegramMessage) {
+    if (message.chat && message.author?.id) {
         await bot.sendMessage({
             allowPaidBroadcast: true,
             chatId: message.author.id,

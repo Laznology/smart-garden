@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "paths": {
+      "@shared/*": ["src/services/shared/*"]
+    },
     "target": "es2018",
     "module": "commonjs",
     "lib": ["es2018", "esnext.asynciterable"],

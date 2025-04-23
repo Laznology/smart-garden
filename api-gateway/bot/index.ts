@@ -1,17 +1,18 @@
 import { TelegramClient } from "telegramsjs";
+import { TelegramMessage, ReadyEvent, Command } from "../src/types/telegram";
 import { telegramConfig } from "./config/telegram";
 import { handleStart } from "./commands/start";
 import { handleAddTopic } from "./commands/addtopic";
 import { handleList } from "./commands/listtopic";
 import { handleRemoveTopic } from "./commands/removetopic";
-import { initMqttClient } from "./services/mqtt-service";
+import { MQTTService } from "../src/services/shared/mqtt.service";
 import { generateContextualResponse } from "./services/gemini-service";
 
 const bot = new TelegramClient(telegramConfig.token, { pollingTimeout: 60 });
 
 async function registerCommands(bot: TelegramClient) {
     try {
-        await bot.user?.setCommands([
+        await bot.user?.setCommands<Command[]>([
             { command: "start", description: "Memulai bot" },
             { command: "help", description: "Bantuan" },
             { command: "addtopic", description: "/addtopic [nama-farm] [nama-sensor] [topic-url]" },
@@ -25,7 +26,7 @@ async function registerCommands(bot: TelegramClient) {
 }
 
 const commandHandlers: {
-    [command: string]: (bot: TelegramClient, message: any, args: string[]) => Promise<any | void>;
+    [command: string]: (bot: TelegramClient, message: TelegramMessage, args: string[]) => Promise<void>;
 } = {
     "/start": handleStart,
     "/addtopic": handleAddTopic,
@@ -33,15 +34,15 @@ const commandHandlers: {
     "/removetopic": handleRemoveTopic,
 };
 
-bot.on("ready", async ({ user }) => {
+bot.on("ready", async ({ user }: ReadyEvent) => {
     await registerCommands(bot);
     console.log(`🤖 Bot login sebagai @${user?.username}`);
     
     // Inisialisasi MQTT Client
-    await initMqttClient(process.env.MQTT_BROKER_URL || "mqtt://localhost:1883");
+    await MQTTService;
 });
 
-bot.on("message", async (message) => {
+bot.on("message", async (message: TelegramMessage) => {
     const text = message.content?.trim() || "";
     const [command, ...args] = text.split(/\s+/);
 

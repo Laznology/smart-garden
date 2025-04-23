@@ -25,5 +25,12 @@
     "prisma": "^5.0.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.3.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ]
   }
 }
