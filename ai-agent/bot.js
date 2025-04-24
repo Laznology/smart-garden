@@ -182,7 +182,7 @@ async function startBot() {
 
     // Listen for messages
     bot.on('message', handleMessage);
-    console.log('Bot is running...');
+    console.log('Bot is running...'); 
   } catch (error) {
     console.error('Error starting bot:', error);
   }
