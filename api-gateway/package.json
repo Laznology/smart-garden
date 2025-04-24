@@ -14,22 +14,23 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/generative-ai": "^0.2.0",
-    "@prisma/client": "^5.0.0",
-    "dotenv": "^16.3.1",
-    "mqtt": "^5.3.0",
-    "telegramsjs": "^1.0.0-alpha.6"
+    "@google/generative-ai": "^0.2.1",
+    "@prisma/client": "^5.22.0",
+    "dotenv": "^16.5.0",
+    "mqtt": "^5.11.1",
+    "telegramsjs": "^4.8.2"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "prisma": "^5.0.0",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.3.2"
+    "@types/node": "^20.17.30",
+    "prisma": "^6.6.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@prisma/client",
       "@prisma/engines",
+      "esbuild",
       "prisma"
     ]
   }

@@ -1,5 +1,4 @@
 import { TelegramClient } from "telegramsjs";
-import { TelegramMessage, ReadyEvent, Command } from "../src/types/telegram";
 import { telegramConfig } from "./config/telegram";
 import { handleStart } from "./commands/start";
 import { handleAddTopic } from "./commands/addtopic";
@@ -12,7 +11,7 @@ const bot = new TelegramClient(telegramConfig.token, { pollingTimeout: 60 });
 
 async function registerCommands(bot: TelegramClient) {
     try {
-        await bot.user?.setCommands<Command[]>([
+        await bot.user?.setCommands([
             { command: "start", description: "Memulai bot" },
             { command: "help", description: "Bantuan" },
             { command: "addtopic", description: "/addtopic [nama-farm] [nama-sensor] [topic-url]" },
@@ -26,7 +25,7 @@ async function registerCommands(bot: TelegramClient) {
 }
 
 const commandHandlers: {
-    [command: string]: (bot: TelegramClient, message: TelegramMessage, args: string[]) => Promise<void>;
+    [command: string]: (bot: TelegramClient, message: any, args: string[]) => Promise<void>;
 } = {
     "/start": handleStart,
     "/addtopic": handleAddTopic,
@@ -34,15 +33,15 @@ const commandHandlers: {
     "/removetopic": handleRemoveTopic,
 };
 
-bot.on("ready", async ({ user }: ReadyEvent) => {
+bot.on("ready", async (telegram) => {
     await registerCommands(bot);
-    console.log(`🤖 Bot login sebagai @${user?.username}`);
+    console.log(`🤖 Bot login sebagai @${telegram.user?.username || ''}`);
     
     // Inisialisasi MQTT Client
     await MQTTService;
 });
 
-bot.on("message", async (message: TelegramMessage) => {
+bot.on("message", async (message) => {
     const text = message.content?.trim() || "";
     const [command, ...args] = text.split(/\s+/);
 

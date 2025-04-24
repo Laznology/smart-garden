@@ -24,11 +24,16 @@ export class MQTTService extends EventEmitter {
     this.config = config;
     this.topicHandlers = new Map();
     
-    if (useDatabase) {
-      this.prisma = new PrismaClient();
+    try {
+      if (useDatabase) {
+        this.prisma = new PrismaClient();
+      }
+      
+      this.initializeMQTTClient();
+    } catch (error) {
+      console.error('Failed to initialize MQTT service:', error);
+      throw error;
     }
-    
-    this.initializeMQTTClient();
   }
 
   private initializeMQTTClient() {
