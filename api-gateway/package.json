@@ -1,34 +1,37 @@
 {
-  "name": "smart-garden-api-gateway",
+  "name": "smart-garden-bot",
   "version": "1.0.0",
-  "description": "Gateway untuk menyimpan data MQTT ke MySQL",
-  "main": "dist/index.js",
+  "description": "Smart Garden Bot dengan integrasi Gemini API dan database",
+  "main": "dist/bot/index.js",
   "scripts": {
+    "start": "node dist/bot/index.js",
+    "dev": "ts-node bot/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },
-  "keywords": [
-    "mqtt",
-    "mysql",
-    "gateway",
-    "iot",
-    "smart-garden"
-  ],
+  "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.2.1",
     "@prisma/client": "^6.6.0",
-    "@types/node": "^22.14.1",
     "dotenv": "^16.5.0",
-    "mqtt": "^5.11.0",
+    "mqtt": "^5.11.1",
+    "telegramsjs": "^4.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.30",
+    "prisma": "^6.6.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
-  "devDependencies": {
-    "@types/mqtt": "^0.0.34",
-    "prisma": "^6.6.0"
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma"
+    ]
   }
 }

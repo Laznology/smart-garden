@@ -7,14 +7,11 @@ import {
 import { Sensor, Topic } from 'src/types';
 
 class MQTTService {
-  private hasSubscribed = false;
   private client: MqttClient;
   private prisma: PrismaClient;
-  private serviceType: string;
 
-  constructor( serviceType : string) {
+  constructor() {
     this.prisma = new PrismaClient();
-    this.serviceType = serviceType;
     this.initializeMQTTClient();
   }
 
@@ -24,10 +21,12 @@ class MQTTService {
 
     const mqttOptions: IClientOptions = {
       ...options,
-      clientId
+      clientId,
+      reconnectPeriod: options?.reconnectPeriod || 1000,
+      keepalive: options?.keepalive || 60
     };
+    
     this.client = mqtt.connect(connectUrl, mqttOptions);
-
     this.setupEventHandlers();
   }
 
@@ -37,35 +36,31 @@ class MQTTService {
 
     this.client.on('connect', async () => {
       console.log('Terhubung ke MQTT broker');
+      this.isConnected = true;
+      this.emit('connected');
       this.subscribeToTopics();
     });
 
     this.client.on('error', (error: Error) => {
       console.error('Kesalahan koneksi MQTT:', error);
+      this.emit('error', error);
+    });
+
+    this.client.on('disconnect', () => {
+      this.isConnected = false;
+      this.emit('disconnected');
     });
 
     this.client.on('message', this.handleMessage.bind(this));
   }
 
-  private async subscribeToTopics() {
-    try {
-      const topic = await this.prisma.topic.findFirst({
-        where: {
-          name: {
-            contains: this.serviceType,
-          }
-        },
-        orderBy: {
-          id: 'desc',
-        }
-      });
-      const topicUrl = topic?.url || 'suhu/topic';  
-
-      this.client.subscribe(topicUrl, (err: Error | null) => {
+  private subscribeToTopics() {
+    mqttSensorConfig.topics.forEach(topic => {
+      this.client.subscribe(topic, (err: Error | null) => {
         if (err) {
-          console.error(`Gagal subscribe ke topic ${topicUrl}:`, err);
+          console.error(`Gagal subscribe ke topic ${topic}:`, err);
         } else {
-          console.log(`Berhasil subscribe ke topic: ${topicUrl}`);
+          console.log(`Berhasil subscribe ke topic: ${topic}`);
         }
       });
     } catch (error) {
@@ -162,33 +157,62 @@ class DynamicTopicController {
 
   private async handleMessage(topic: string, message: Buffer) {
     try {
-      const payload : Topic = JSON.parse(message.toString());
-      console.log(`topic: ${topic}, ${payload}`);
-      await this.prisma.topic.create({
-        data: {
-          name: payload.name,
-          url: payload.url
-        }
-      });
-      console.log('Data berhasil disimpan ke database');
+      const payload = JSON.parse(message.toString());
+      console.log(`Menerima pesan dari topic ${topic}:`, payload);
+      
 
-      try {
-        await this.mqttService.refreshSubscription();
-        console.log('Subscription untuk topic MQTT sudah di-refresh!');
-      } catch (error) {
-        console.error('Gagal melakukan refresh subscription:', error);
-      }
+      // await this.prisma.sensorReading.create({
+      //   data: {
+          
+      //   }
+      // });
+
+      // console.log('Data berhasil disimpan ke database');
     } catch (error) {
       console.error('Gagal memproses pesan:', error);
+      this.emit('error', error);
     }
   }
 
-  public disconnect() {
+  public publishMessage(topic: string, message: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.isConnected) {
+        reject(new Error('MQTT client tidak terhubung'));
+        return;
+      }
+
+      const payload = typeof message === 'string' ? message : JSON.stringify(message);
+      
+      this.client.publish(topic, payload, (err?: Error) => {
+        if (err) {
+          console.error(`Gagal publish ke topic ${topic}:`, err);
+          reject(err);
+        } else {
+          console.log(`Berhasil publish ke topic: ${topic}`);
+          resolve();
+        }
+      });
+    });
+  }
+
+  public getConnectionStatus(): boolean {
+    return this.isConnected;
+  }
+
+  public async disconnect() {
     if (this.client) {
-      this.client.end();
+      await new Promise<void>((resolve) => {
+        this.client.end(false, () => {
+          this.isConnected = false;
+          resolve();
+        });
+      });
     }
-    this.prisma.$disconnect();
+    
+    if (this.prisma) {
+      await this.prisma.$disconnect();
+    }
   }
 }
 
-export {MQTTService, DynamicTopicController};
+export default MQTTService;

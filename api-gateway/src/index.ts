@@ -8,7 +8,7 @@ dotenv.config();
 const sensorMQTTService = new MQTTService('sensor');
 const dynamicController = new DynamicTopicController(sensorMQTTService);
 
-// Handle graceful shutdown
+
 process.on('SIGTERM', () => {
   console.log('Menerima sinyal SIGTERM, melakukan cleanup...');
   dynamicController.disconnect();
