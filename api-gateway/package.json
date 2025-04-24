@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^6.6.0",
     "dotenv": "^16.5.0",
     "mqtt": "^5.11.1",
     "telegramsjs": "^4.8.2"
