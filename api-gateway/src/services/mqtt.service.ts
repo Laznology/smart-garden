@@ -92,7 +92,7 @@ class MQTTService {
     } catch (error) {
       console.error('Gagal memproses pesan:', error);
     }
-  }
+  } 
 
   public async refreshSubscription() {
     console.log('Memperbarui subscription MQTT sensor...');
