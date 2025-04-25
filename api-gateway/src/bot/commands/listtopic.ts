@@ -1,6 +1,6 @@
 import { TelegramClient } from "telegramsjs";
-import { TelegramMessage } from "../../src/types/telegram";
-import { dbService } from "../services/database-service";
+import { TelegramMessage } from "../../types/telegram";
+import { dbService } from "../../services/database-service";
 
 export async function handleList(bot: TelegramClient, message: TelegramMessage) {
   const chatId = message.chat?.id ?? 0;

@@ -6,6 +6,5 @@ export interface Sensor {
 export interface Topic {
     name: string,
     url: string
-
 }
 

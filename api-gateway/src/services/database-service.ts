@@ -87,12 +87,28 @@ export const dbService = {
   },
   
   // Analytics
-  async createAnalytic(sensorReadingId: number, label: string, trend: string) {
+  async createAnalytic(
+    sensor_type: string,
+    label: string,
+    trend: string,
+    min: number,
+    max: number,
+    mean: number,
+    startDate: Date,
+    endDate: Date,
+    farm_id: number
+  ) {
     return await prisma.analytic.create({
       data: {
-        sensorReadingId,
+        sensor_type,
         label,
-        trend
+        trend,
+        min, 
+        max,
+        mean,
+        startDate,
+        endDate,
+        farm_id
       }
     });
   },

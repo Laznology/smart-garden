@@ -1,5 +1,5 @@
 import { TelegramClient } from "telegramsjs";
-import { TelegramMessage } from "../../src/types/telegram";
+import { TelegramMessage } from "../../types/telegram";
 
 export async function handleStart(bot: TelegramClient, message: TelegramMessage) {
     if (message.chat && message.author?.id) {

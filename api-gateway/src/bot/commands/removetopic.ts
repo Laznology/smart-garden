@@ -1,7 +1,7 @@
 import { TelegramClient } from "telegramsjs";
-import { TelegramMessage } from "../../src/types/telegram";
-import { dbService } from "../services/database-service";
-import { MQTTService } from "../../src/services/shared/mqtt.service";
+import { TelegramMessage } from "../../types/telegram";
+import { dbService } from "../../services/database-service";
+import { MQTTService } from "../../services/mqtt-service";
 
 export async function handleRemoveTopic(bot: TelegramClient, message: TelegramMessage, args: string[]) {
   const chatId = message.chat?.id ?? 0;
