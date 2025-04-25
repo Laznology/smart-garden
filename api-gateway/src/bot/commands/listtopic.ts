@@ -6,7 +6,6 @@ export async function handleList(bot: TelegramClient, message: TelegramMessage) 
   const chatId = message.chat?.id ?? 0;
   
   try {
-    // Ambil semua topic dari database
     const topics = await dbService.getAllTopics();
     
     if (topics.length === 0) {

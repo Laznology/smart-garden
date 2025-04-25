@@ -65,7 +65,7 @@ export class Bot {
                 try {
                     const placeholder = await this.bot.sendMessage({
                         chatId: message.chat?.id || 0,
-                        text: "✍️ Generate...",
+                        text: "✍️ Sedang memproses pesan...",
                     });
         
                     // Gunakan Gemini service dengan data dari database, tanpa streaming

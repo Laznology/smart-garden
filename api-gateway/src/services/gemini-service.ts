@@ -1,12 +1,16 @@
-import {  geminiModel } from '../config/gemini';
+import { geminiModel } from '../config/gemini';
 import { dbService } from './database-service';
 
+interface SensorRecord {
+  value: number;
+  createdAt: Date;
+}
 
 async function getContextData() {
   try {
     const contextData = await dbService.getContextualData();
     
-    if (contextData.length === 0) {
+    if (contextData.farms.length === 0) {
       return "Belum ada farm atau sensor yang terdaftar.";
     }
     
@@ -32,7 +36,7 @@ export async function getSensorHistory(farmName: string, sensorType: string) {
       return `Belum ada data historis untuk sensor ${sensorType} di farm ${farmName}.`;
     }
     
-    return JSON.stringify(history.map(record => ({
+    return JSON.stringify(history.map((record: SensorRecord) => ({
       value: record.value,
       timestamp: record.createdAt.toLocaleString("id-ID")
     })), null, 2);
@@ -72,4 +76,4 @@ export async function generateContextualResponse(userMessage: string) {
     console.error('❌ Error saat generate respons Gemini:', error);
     return "Maaf, terjadi kesalahan saat memproses permintaan Anda.";
   }
-} 
+}
