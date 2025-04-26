@@ -34,28 +34,12 @@ interface ContextualData {
   }>;
 }
 
-type SensorReading = {
-  sensor_type: string;
-  value: number;
-  createdAt: Date;
-};
-
-type Analytic = {
-  sensor_type: string;
-  trend: string;
-  min: number;
-  max: number;
-  mean: number;
-  startDate: Date;
-  endDate: Date;
-};
-
-type Farm = {
-  id: number;
+interface CreateTopicData {
   name: string;
-  sensor_reading: SensorReading[];
-  Analytic: Analytic[];
-};
+  url: string;
+  farm_id: number;
+  sensor_type: string;
+}
 
 export const dbService = {
   async createFarm(name: string) {
@@ -115,31 +99,43 @@ export const dbService = {
   },
   
   async getAllTopics() {
-    return await prisma.topic.findMany();
+    return await prisma.topic.findMany({
+      include: {
+        farm: true
+      }
+    });
   },
   
-  async createTopic(name: string, url: string) {
+  async createTopic(data: CreateTopicData) {
     return await prisma.topic.create({
-      data: {
-        name,
-        url
+      data,
+      include: {
+        farm: true
       }
     });
   },
   
   async getTopicByName(name: string) {
     return await prisma.topic.findFirst({
-      where: {
-        name
+      where: { name },
+      include: {
+        farm: true
+      }
+    });
+  },
+
+  async getTopicByUrl(url: string) {
+    return await prisma.topic.findFirst({
+      where: { url },
+      include: {
+        farm: true
       }
     });
   },
   
   async deleteTopic(id: number) {
     return await prisma.topic.delete({
-      where: {
-        id
-      }
+      where: { id }
     });
   },
   
@@ -200,7 +196,7 @@ export const dbService = {
         }
       });
 
-      const contextData = farms.map((farm: Farm) => ({
+      const contextData = farms.map(farm => ({
         farm_info: {
           id: farm.id,
           name: farm.name

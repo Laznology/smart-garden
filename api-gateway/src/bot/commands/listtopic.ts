@@ -1,47 +1,59 @@
 import { TelegramClient } from "telegramsjs";
-import { TelegramMessage } from "../../types/telegram";
 import { dbService } from "../../services/database-service";
+import { MQTTService } from "../../services/mqtt-service";
 
-export async function handleList(bot: TelegramClient, message: TelegramMessage) {
-  const chatId = message.chat?.id ?? 0;
-  
+export async function handleList(
+  bot: TelegramClient, 
+  message: any, 
+  _args: string[], 
+  mqttService: MQTTService
+) {
   try {
     const topics = await dbService.getAllTopics();
     
     if (topics.length === 0) {
       await bot.sendMessage({
-        chatId,
-        text: "ℹ️ Belum ada topic yang terdaftar. Gunakan /addtopic untuk menambahkan topic sensor."
+        chatId: message.chat.id,
+        text: "Belum ada topic yang disubscribe."
       });
       return;
     }
-    
-    // Format list topic untuk ditampilkan
-    let messageText = "📋 Daftar Topic Terdaftar:\n\n";
-    
-    for (const topic of topics) {
-      if (topic.name && topic.url) {
-        const parts = topic.name.split('/');
-        const farmName = parts[0] || 'Unknown';
-        const sensorType = parts[1] || 'Unknown';
-        
-        messageText += `🏡 Farm: ${farmName}\n`;
-        messageText += `📟 Sensor: ${sensorType}\n`;
-        messageText += `🔗 Topic: ${topic.url}\n`;
-        messageText += `📅 Terdaftar: ${topic.updatedAt.toLocaleString("id-ID")}\n\n`;
+
+    const topicsByFarm = topics.reduce((acc, topic) => {
+      if (!acc[topic.farm.name]) {
+        acc[topic.farm.name] = [];
       }
+      acc[topic.farm.name].push({
+        name: topic.name,
+        sensor: topic.sensor_type,
+        url: topic.url,
+        isConnected: mqttService.getConnectionStatus()
+      });
+      return acc;
+    }, {} as { [key: string]: Array<{ name: string; sensor: string; url: string; isConnected: boolean }> });
+
+    // Format message
+    let responseText = "📡 Daftar Topic Tersubscribe:\n\n";
+    
+    for (const [farmName, farmTopics] of Object.entries(topicsByFarm)) {
+      responseText += `🌾 Farm: ${farmName}\n`;
+      for (const topic of farmTopics) {
+        const statusEmoji = topic.isConnected ? "🟢" : "🔴";
+        responseText += `${statusEmoji} ${topic.sensor}: ${topic.url}\n`;
+      }
+      responseText += "\n";
     }
-    
+
     await bot.sendMessage({
-      chatId,
-      text: messageText
+      chatId: message.chat.id,
+      text: responseText.trim()
     });
-    
+
   } catch (error) {
-    console.error("❌ Error saat menampilkan daftar topic:", error);
+    console.error("Error listing topics:", error);
     await bot.sendMessage({
-      chatId,
-      text: "❌ Terjadi kesalahan saat mengambil daftar topic."
+      chatId: message.chat.id,
+      text: "❌ Gagal mendapatkan daftar topic"
     });
   }
 }

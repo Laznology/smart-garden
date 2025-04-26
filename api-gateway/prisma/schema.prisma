@@ -14,6 +14,7 @@ model Farm {
   name           String
   sensor_reading SensorReading[]
   Analytic       Analytic[]
+  topics         Topic[]
 
   @@map("farms")
 }
@@ -61,10 +62,13 @@ model Message {
 }
 
 model Topic {
-  id        Int      @id @default(autoincrement())
-  name      String
-  url       String
-  updatedAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  name        String
+  url         String   @unique
+  farm_id     Int
+  sensor_type String
+  farm        Farm     @relation(fields: [farm_id], references: [id])
+  updatedAt   DateTime @default(now())
 
   @@map("topics")
 }

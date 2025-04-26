@@ -5,12 +5,14 @@ import { handleAddTopic } from "./commands/addtopic";
 import { handleList } from "./commands/listtopic";
 import { handleRemoveTopic } from "./commands/removetopic";
 import { generateContextualResponse } from "../services/gemini-service";
+import { MQTTService } from "../services/mqtt-service";
 
 export class Bot {
     private bot: TelegramClient;
+    private mqttService: MQTTService;
 
     private commandHandlers: {
-        [command: string]: (bot: TelegramClient, message: any, args: string[]) => Promise<void>;
+        [command: string]: (bot: TelegramClient, message: any, args: string[], mqttService: MQTTService) => Promise<void>;
     } = {
         "/start": handleStart,
         "/addtopic": handleAddTopic,
@@ -18,8 +20,9 @@ export class Bot {
         "/removetopic": handleRemoveTopic,
     };
     
-    constructor() {
+    constructor(mqttService: MQTTService) {
         this.bot = new TelegramClient(telegramConfig.token, { pollingTimeout: 60 });
+        this.mqttService = mqttService;
     }
 
     private async registerCommands() {
@@ -50,7 +53,7 @@ export class Bot {
             const handler = this.commandHandlers[command.toLowerCase()];
             if (handler) {
                 try {
-                    await handler(this.bot, message, args);
+                    await handler(this.bot, message, args, this.mqttService);
                 } catch (err) {
                     console.error("❌ Error saat memproses command:", err);
                     if (message.chat) {
@@ -66,16 +69,15 @@ export class Bot {
                     const placeholder = await this.bot.sendMessage({
                         chatId: message.chat?.id || 0,
                         text: "✍️ Sedang memproses pesan...",
+                        parseMode: "MarkdownV2",
                     });
-        
-                    // Gunakan Gemini service dengan data dari database, tanpa streaming
                     const response = await generateContextualResponse(text);
                     
-                    // Update pesan dengan respons yang sudah lengkap
                     await this.bot.editMessageText({
                         chatId: message.chat?.id || 0,
                         messageId: placeholder.id,
                         text: response.trim(),
+                        parseMode: "MarkdownV2",
                     });
                     
                 } catch (err) {
