@@ -1,25 +1,43 @@
 import { TelegramClient } from "telegramsjs";
-import { TelegramMessage } from "../../types/telegram";
+import { MQTTService } from "../../services/mqtt-service";
 
-export async function handleStart(bot: TelegramClient, message: TelegramMessage) {
-    if (message.chat && message.author?.id) {
-        await bot.sendMessage({
-            allowPaidBroadcast: true,
-            chatId: message.author.id,
-            parseMode: 'Markdown', 
-            text: `👋 *Hello, saya adalah asisten AI untuk hidroponik!* 🌱
+export async function handleStart(
+  bot: TelegramClient, 
+  message: any, 
+  _args: string[],
+  mqttService: MQTTService
+) {
+  const welcomeMessage = `
+🌱 Selamat datang di Smart Garden Bot!
 
-Saya di sini untuk membantu Anda mengelola kebun hidroponik dengan lebih mudah. Anda bisa bertanya tentang:
-- 🌿 *Tips pertumbuhan tanaman*
-- 💧 *Pengelolaan sistem hidroponik*
-- 🧑‍🔬 *Pemantauan dan analisis data tanaman*
-- 🛠️ *Pemeliharaan alat dan perangkat*
+Berikut adalah daftar perintah yang tersedia:
 
-_Bot ini selalu siap membantu Anda mengoptimalkan kebun hidroponik Anda._  
-Cukup kirimkan pertanyaan atau instruksi, dan saya akan memberikan jawaban terbaik untuk Anda!
+📝 Manajemen Topic
+/addtopic [nama farm] [nama-sensor] [topic-url]
+  ➜ Menambahkan topic baru untuk monitoring sensor. Jika farm belum ada, akan dibuat otomatis.
+  ➜ Contoh: /addtopic Kebun Belakang temperature sensor/kebunbelakang/temp
 
-Apa yang bisa saya bantu hari ini?`
+/removetopic [nama-sensor]
+  ➜ Menghapus topic yang sudah tidak digunakan
+  ➜ Contoh: /removetopic Kebun Belakang-temperature
 
-        });
-    }
+/listtopic
+  ➜ Menampilkan semua topic yang sedang dimonitor
+
+💡 Tipe sensor yang didukung:
+• temperature - Suhu
+• humidity - Kelembaban udara
+• soil_moisture - Kelembaban tanah
+• light - Intensitas cahaya
+
+❓ Anda juga dapat bertanya tentang kondisi kebun dengan mengirim pertanyaan langsung.
+Contoh: "Bagaimana kondisi suhu di Kebun Belakang?"
+
+Status MQTT: ${mqttService.getConnectionStatus() ? "🟢 Terhubung" : "🔴 Terputus"}
+`;
+
+  await bot.sendMessage({
+    chatId: message.chat.id,
+    text: welcomeMessage
+  });
 }

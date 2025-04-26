@@ -57,7 +57,6 @@ export class MQTTService extends EventEmitter {
       this.isConnected = true;
       this.emit('connected');
       
-      // Resubscribe to all topics if reconnecting
       if (this.config.topics) {
         this.subscribeToTopics(this.config.topics);
       }
@@ -122,19 +121,18 @@ export class MQTTService extends EventEmitter {
   private async handleMessage(topic: string, message: Buffer) {
     try {
       const payload = JSON.parse(message.toString());
-      console.log(`Menerima pesan dari topic ${topic}:`, payload);
 
-      // Emit event for all subscribers
       this.emit('message', topic, payload);
 
-      // Call specific handler if exists
       const handler = this.topicHandlers.get(topic);
       if (handler) {
         await handler(topic, payload);
+      } else {
+        console.log(`[MQTTService] No specific handler found for topic ${topic}.`);
       }
 
     } catch (error) {
-      console.error('Gagal memproses pesan:', error);
+      console.error(`[MQTTService] Error processing message on topic ${topic}:`, error); 
       this.emit('error', error);
     }
   }
