@@ -6,7 +6,6 @@ export const mqttConfig = {
   broker: process.env.MQTT_BROKER || 'broker.emqx.io',
   port: parseInt(process.env.MQTT_PORT || '1883', 10),
   clientId: process.env.MQTT_CLIENT_ID || `smart_garden_gateway_${Math.random().toString(16).slice(2, 8)}`,
-  topic: process.env.MQTT_TOPIC_CONTROLLER,
   options: {
     keepalive: 60,
     reconnectPeriod: 1000,
