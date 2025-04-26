@@ -7,6 +7,10 @@ import { handleRemoveTopic } from "./commands/removetopic";
 import { generateContextualResponse } from "../services/gemini-service";
 import { MQTTService } from "../services/mqtt-service";
 
+function escapeMarkdown(text: string): string {
+    return text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
+}
+
 export class Bot {
     private bot: TelegramClient;
     private mqttService: MQTTService;
@@ -68,16 +72,17 @@ export class Bot {
                 try {
                     const placeholder = await this.bot.sendMessage({
                         chatId: message.chat?.id || 0,
-                        text: "✍️ Sedang memproses pesan...",
-                        parseMode: "MarkdownV2",
+                        text: escapeMarkdown("✍️ Sedang memproses pesan..."),
+                        parseMode: "Markdown"
                     });
                     const response = await generateContextualResponse(text);
                     
+                    const escapedResponse = escapeMarkdown(response.trim());
                     await this.bot.editMessageText({
                         chatId: message.chat?.id || 0,
                         messageId: placeholder.id,
-                        text: response.trim(),
-                        parseMode: "MarkdownV2",
+                        text: escapedResponse,
+                        parseMode: "Markdown",
                     });
                     
                 } catch (err) {

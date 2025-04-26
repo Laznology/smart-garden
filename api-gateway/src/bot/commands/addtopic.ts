@@ -56,16 +56,50 @@ export async function handleAddTopic(
     });
 
     // Set handler untuk topic baru
+    function isValidValue(value: number, sensorType: string): boolean {
+      if (!isFinite(value) || isNaN(value)) return false;
+    
+      switch(sensorType) {
+        case 'temperature':
+          return value >= -10 && value <= 50;
+        case 'humidity':
+          return value >= 0 && value <= 100;
+        case 'soil':
+        case 'soil_moisture':
+          return value >= 0 && value <= 100;
+        default:
+          return false;
+      }
+    }
+
     mqttService.setTopicHandler(topicUrl, async (_topic, payload) => {
       console.log(`[${new Date().toISOString()}] Pesan masuk (${topicUrl}):`, JSON.stringify(payload)); 
       try {
-        if (typeof payload === 'number') { 
-          await dbService.saveSensorReading(farm!.id, sensorType, payload); 
-
-          console.log(`✅ Data disimpan: ${farm!.name}, ${sensorType}, Value: ${payload}`); 
-        } else {
-          console.error(`❌ Payload aneh di ${topicUrl}. Payload:`, JSON.stringify(payload), `Harusnya angka.`); 
+        // Cek format payload
+        if (typeof payload !== 'object' || payload === null) {
+          console.error(`❌ Format payload tidak valid di ${topicUrl}. Payload:`, JSON.stringify(payload));
+          return;
         }
+
+        // Tentukan key yang sesuai dari payload berdasarkan tipe sensor
+        const payloadKey = sensorType === 'soil_moisture' ? 'soil' : sensorType;
+        const value = payload[payloadKey];
+
+        // Validasi nilai
+        if (typeof value !== 'number') {
+          console.error(`❌ Nilai ${payloadKey} harus berupa angka di ${topicUrl}`);
+          return;
+        }
+
+        // Validasi range nilai
+        if (!isValidValue(value, payloadKey)) {
+          console.error(`❌ Nilai ${payloadKey} (${value}) di luar range yang valid`);
+          return;
+        }
+
+        // Simpan ke database
+        await dbService.saveSensorReading(farm!.id, sensorType, value);
+        console.log(`✅ Data tersimpan untuk farm ${farm!.name}, sensor ${sensorType}, Value: ${value}`);
       } catch (error) {
         console.error(`❌ Gagal simpan data dari ${topicUrl}:`, error);
       }
