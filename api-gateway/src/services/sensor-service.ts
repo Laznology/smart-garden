@@ -12,21 +12,59 @@ export class SensorService extends MQTTService {
     super(config, useDatabase);
     
     // Listen for MQTT messages
-    this.on('message', async (_topic: string, payload: SensorReading) => {
-      await this.handleSensorReading(payload);
+    this.on('message', async (_topic: string, payload: any) => {
+      try {
+        const { temperature, humidity, soil, farmId } = payload;
+        if (!farmId) {
+          console.error('❌ No farmId in payload');
+          return;
+        }
+
+        const readings: SensorReading[] = [];
+
+        // Collect all available sensor readings
+        const sensorData = {
+          temperature,
+          humidity,
+          soil
+        };
+
+        // Build readings array for all present sensor values
+        for (const [sensorType, value] of Object.entries(sensorData)) {
+          if (value !== undefined && value !== null) {
+            readings.push({
+              farmId,
+              sensor_type: sensorType,
+              value: Number(value)
+            });
+          }
+        }
+
+        if (readings.length > 0) {
+          await this.handleSensorReading(readings);
+        }
+
+      } catch (error) {
+        console.error('❌ Error processing sensor data:', error);
+        this.emit('error', error);
+      }
     });
   }
 
-  async handleSensorReading(payload: SensorReading) {
+  async handleSensorReading(readings: SensorReading[]) {
     try {
-      // Save sensor reading to database
-      await dbService.saveSensorReading(payload);
-      console.log(`✅ Sensor reading saved: ${payload.value} for ${payload.sensor_type} in farm ${payload.farmId}`);
+      // Save multiple sensor readings
+      const result = await dbService.saveSensorReadings(readings);
+      console.log(`✅ Saved ${result.count} sensor readings`);
+      
+      for (const reading of readings) {
+        console.log(`  - ${reading.sensor_type}: ${reading.value}`);
+      }
 
       // Emit event for further processing
-      this.emit('sensorReading', payload);
+      this.emit('sensorReading', readings);
     } catch (error) {
-      console.error('❌ Error handling sensor reading:', error);
+      console.error('❌ Error handling sensor readings:', error);
       this.emit('error', error);
     }
   }

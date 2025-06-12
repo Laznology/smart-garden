@@ -105,61 +105,24 @@ export class MQTTService extends EventEmitter {
   private async handleMessage(topic: string, message: Buffer) {
     try {
       const payload = JSON.parse(message.toString());
-      console.log(`[MQTT] Received message on topic (${topic}):`, message.toString());
+      console.log(`[Received] Topic: ${topic}, Payload:`, payload);
 
-      // Get topics configuration from database
-      const topics = await this.prisma?.topic.findMany({
-        where: {
-          topic: topic
-        }
+      // Get topic configuration 
+      const topicConfig = await this.prisma?.topic.findFirst({
+        where: { topic },
+        include: { farm: true }
       });
 
-      if (!topics || topics.length === 0) {
+      if (!topicConfig) {
         console.log(`[MQTT] No topic configuration found for ${topic}`);
         return;
       }
 
-      // Process each configured sensor type for this topic
-      for (const topicConfig of topics) {
-        const { sensorType, farmId } = topicConfig;
-        
-        // Extract the relevant value based on sensor type
-        let value: number | undefined;
-        
-        switch (sensorType) {
-          case 'temperature':
-            value = payload.temperature;
-            break;
-          case 'humidity':
-            value = payload.humidity;
-            break;
-          case 'soil':
-            value = payload.soil;
-            break;
-        }
-
-        if (value !== undefined) {
-          // Emit with the processed reading
-          this.emit('message', topic, {
-            farmId,
-            sensor_type: sensorType,
-            value: value
-          });
-          
-          // Emit the processed reading for SensorService to handle
-          this.emit('message', topic, {
-            farmId,
-            sensor_type: sensorType,
-            value: value
-          });
-          
-          console.log(`✅ Processed ${sensorType} reading: ${value} for farm ${farmId}`);
-        } else {
-          console.log(`⚠️ No ${sensorType} value found in payload for topic ${topic}`);
-        }
-      }
+      // Emit message with farm info
+      this.emit('message', topic, { ...payload, farmId: topicConfig.farmId });
+      
     } catch (error) {
-      console.error(`❌ [MQTT] Error processing message:`, error); 
+      console.error(`[MQTTService] Error processing message:`, error);
       this.emit('error', error);
     }
   }

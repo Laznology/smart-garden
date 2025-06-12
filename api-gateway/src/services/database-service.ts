@@ -19,9 +19,13 @@ interface SensorReading {
 
 
 export const dbService = {
-  async saveSensorReading(data: SensorReading) {
-    return await prisma.sensorReading.create({
-      data
+  async saveSensorReadings(readings: SensorReading[]) {
+    return await prisma.sensorReading.createMany({
+      data: readings.map(reading => ({
+        farmId: reading.farmId,
+        sensor_type: reading.sensor_type,
+        value: reading.value
+      }))
     });
   },
 
@@ -145,6 +149,12 @@ export const dbService = {
           sensorType
         }
       }
+    });
+  },
+
+  async getTopicByPath(topicPath: string) {
+    return await prisma.topic.findFirst({
+      where: { topic: topicPath }
     });
   }
 };
