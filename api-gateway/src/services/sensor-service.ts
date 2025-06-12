@@ -1,42 +1,33 @@
-import MQTTService from './mqtt-service';
+import { MQTTService } from './mqtt-service';
 import { dbService } from './database-service';
 
-export async function initializeTopics(mqttService : MQTTService) {
-  try {
-    const topics = await dbService.getAllTopics();
-    console.log(`Ditemukan ${topics.length} topic di database`);
-    
-    for (const topic of topics) {
-      try {
-        await mqttService.subscribeTopic(topic.url);
-        console.log(`✅ Berhasil subscribe ke topic: ${topic.url}`);
-        
-        // Set handler untuk setiap topic
-        mqttService.setTopicHandler(topic.url, async (topicUrl, payload) => {
-          // Tambahkan log untuk membedakan handler ini
-          console.log(`[Initializer Handler] Received message on topic (${topicUrl}):`, JSON.stringify(payload)); 
-          try {
-            if (typeof payload === 'number') { 
-              await dbService.saveSensorReading(
-                topic.farm_id,
-                topic.sensor_type,
-                payload
-              );
+interface SensorReading {
+  farmId: number;
+  sensor_type: string;
+  value: number;
+}
 
-              console.log(`✅ [Initializer Handler] Data tersimpan untuk farm ${topic.farm.name}, sensor ${topic.sensor_type}, Value: ${payload}`); 
-            } else {
-              console.error(`❌ [Initializer Handler] Format payload tidak valid untuk topic ${topicUrl}. Payload:`, JSON.stringify(payload), `Expected a number.`); 
-            }
-          } catch (error) {
-            console.error(`❌ [Initializer Handler] Error saat menyimpan data dari topic ${topicUrl}:`, error); 
-          }
-        });
-        
-      } catch (error) {
-        console.error(`❌ Gagal subscribe ke topic ${topic.url}:`, error);
-      }
+export class SensorService extends MQTTService {
+  constructor(config: any, useDatabase: boolean = true) {
+    super(config, useDatabase);
+    
+    // Listen for MQTT messages
+    this.on('message', async (_topic: string, payload: SensorReading) => {
+      await this.handleSensorReading(payload);
+    });
+  }
+
+  async handleSensorReading(payload: SensorReading) {
+    try {
+      // Save sensor reading to database
+      await dbService.saveSensorReading(payload);
+      console.log(`✅ Sensor reading saved: ${payload.value} for ${payload.sensor_type} in farm ${payload.farmId}`);
+
+      // Emit event for further processing
+      this.emit('sensorReading', payload);
+    } catch (error) {
+      console.error('❌ Error handling sensor reading:', error);
+      this.emit('error', error);
     }
-  } catch (error) {
-    console.error('❌ Gagal menginisialisasi topic:', error);
   }
 }

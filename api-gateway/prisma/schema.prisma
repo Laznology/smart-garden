@@ -10,44 +10,46 @@ datasource db {
 }
 
 model Farm {
-  id             Int             @id @default(autoincrement())
-  name           String
-  sensor_reading SensorReading[]
-  Analytic       Analytic[]
-  topics         Topic[]
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // Nama farm (e.g., farm1, farm2, etc)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relasi
+  sensors SensorReading[]
+  topics  Topic[]
 
   @@map("farms")
 }
 
 model SensorReading {
   id          Int      @id @default(autoincrement())
-  farm_id     Int
-  sensor_type String // Kelembapan tanah, Kelembapan Udara, Suhu
+  farmId      Int
+  sensor_type String
   value       Float
   createdAt   DateTime @default(now())
-  farm        Farm?    @relation(fields: [farm_id], references: [id])
 
-  @@index([sensor_type])
+  // Relasi ke Farm
+  farm Farm @relation(fields: [farmId], references: [id])
+
   @@index([createdAt])
+  @@index([farmId])
   @@map("sensor_readings")
 }
 
 model Analytic {
-  id          Int      @id @default(autoincrement())
-  label       String
-  trend       String
-  min         Float
-  max         Float
-  mean        Float
-  sensor_type String // Kelembapan tanah, Kelembapan Udara, Suhu
-  farm_id     Int
-  startDate   DateTime
-  endDate     DateTime
-  createdAt   DateTime @default(now())
-  farm        Farm     @relation(fields: [farm_id], references: [id])
+  id         Int      @id @default(autoincrement())
+  label      String
+  trend      String
+  sensorType String
+  min        Float
+  max        Float
+  mean       Float
+  startDate  DateTime
+  endDate    DateTime
+  createdAt  DateTime @default(now())
 
   @@index([createdAt])
-  @@index([sensor_type])
   @@index([startDate, endDate])
   @@map("analytics")
 }
@@ -62,13 +64,16 @@ model Message {
 }
 
 model Topic {
-  id          Int      @id @default(autoincrement())
-  name        String
-  url         String   @unique
-  farm_id     Int
-  sensor_type String
-  farm        Farm     @relation(fields: [farm_id], references: [id])
-  updatedAt   DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  farmId     Int
+  sensorType String // humidity, temperature, soil
+  topic      String // MQTT topic path
+  createdAt  DateTime @default(now())
 
+  // Relasi ke Farm
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@unique([farmId, sensorType])
+  @@index([farmId])
   @@map("topics")
 }

@@ -12,5 +12,6 @@ export const mqttConfig = {
     clean: true,
     encoding: 'utf8' as BufferEncoding,
     protocol: 'mqtt' as 'mqtt' | 'mqtts' | 'ws' | 'wss'
-  }
+  },
+  topic: process.env.MQTT_TOPIC || 'p5/sensor'
 };
