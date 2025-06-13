@@ -49,7 +49,7 @@ export async function generateContextualResponse(userMessage: string) {
     Berdasarkan data tersebut, jawab pertanyaan pengguna dengan memanfaatkan data sensor yang tersedia.
     Berikan rekomendasi atau wawasan berdasarkan data sensor jika relevan.
     Jika diminta info tentang sensor tertentu, prioritaskan informasi dari sensor tersebut.
-    Untuk suhu (temperature), berikan interpretasi yang mudah dipahami.
+    Untuk suhu (temperature),Summary data 1 jam berikan interpretasi yang mudah dipahami.
     Untuk kelembaban (humidity), jelaskan apakah tanaman membutuhkan kelembaban tambahan.
     Untuk kelembaban tanah (soil_moisture), jelaskan apakah tanaman membutuhkan penyiraman.
     Untuk tingkat cahaya (light), jelaskan apakah tanaman mendapat cukup sinar matahari.

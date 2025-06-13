@@ -48,6 +48,12 @@ export class Bot {
         });
         this.bot.on("message", async (message) => {
             const text = message.content?.trim() || "";
+            
+            // Ignore 'on' and 'off' messages
+            if (text.toLowerCase() === 'on' || text.toLowerCase() === 'off') {
+                return;
+            }
+
             const [command, ...args] = text.split(/\s+/);
             const handler = this.commandHandlers[command.toLowerCase()];
             if (handler) {

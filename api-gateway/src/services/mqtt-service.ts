@@ -6,7 +6,7 @@ export interface IMQTTConfig {
   broker: string;
   port: number;
   clientId: string;
-  // topic: string;
+  topic: string;
   options?: IClientOptions;
 }
 
@@ -85,7 +85,7 @@ export class MQTTService extends EventEmitter {
       // Load and subscribe to topics when connected
       await this.loadAndSubscribeTopics();
       
-      // this.client.subscribe(this.config.topic);
+      this.client.subscribe(this.config.topic);
       this.emit('connected');
 
       this.client.on('error', (error: Error) => {
@@ -105,24 +105,53 @@ export class MQTTService extends EventEmitter {
   private async handleMessage(topic: string, message: Buffer) {
     try {
       const payload = JSON.parse(message.toString());
-      console.log(`[Received] Topic: ${topic}, Payload:`, payload);
+      console.log(`[MQTT] Received message on topic (${topic}):`, message.toString());
 
-      // Get topic configuration 
-      const topicConfig = await this.prisma?.topic.findFirst({
-        where: { topic },
-        include: { farm: true }
+      // Get topics configuration from database
+      const topics = await this.prisma?.topic.findMany({
+        where: {
+          topic: topic
+        }
       });
 
-      if (!topicConfig) {
+      if (!topics || topics.length === 0) {
         console.log(`[MQTT] No topic configuration found for ${topic}`);
         return;
       }
 
-      // Emit message with farm info
-      this.emit('message', topic, { ...payload, farmId: topicConfig.farmId });
-      
+      // Process each configured sensor type for this topic
+      for (const topicConfig of topics) {
+        const { sensorType, farmId } = topicConfig;
+        
+        // Extract the relevant value based on sensor type
+        let value: number | undefined;
+        
+        switch (sensorType) {
+          case 'temperature':
+            value = payload.temperature;
+            break;
+          case 'humidity':
+            value = payload.humidity;
+            break;
+          case 'soil':
+            value = payload.soil;
+            break;
+        }
+
+        if (value !== undefined) {
+          // Emit the processed reading
+          this.emit('message', topic, {
+            farmId,
+            sensor_type: sensorType,
+            value: value
+          });
+          console.log(`✅ Processed ${sensorType} reading: ${value} for farm ${farmId}`);
+        } else {
+          console.log(`⚠️ No ${sensorType} value found in payload for topic ${topic}`);
+        }
+      }
     } catch (error) {
-      console.error(`[MQTTService] Error processing message:`, error);
+      console.error(`❌ [MQTT] Error processing message:`, error); 
       this.emit('error', error);
     }
   }
@@ -168,4 +197,4 @@ export class MQTTService extends EventEmitter {
   }
 }
 
-// MQTTService is exported as named export above
+export default MQTTService;
