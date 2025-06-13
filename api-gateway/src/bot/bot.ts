@@ -1,11 +1,8 @@
 import { TelegramClient } from "telegramsjs";
 import { telegramConfig } from "../config/telegram";
-import { handleStart } from "./commands/start";
-import { handleAddTopic } from "./commands/addtopic";
-import { handleList } from "./commands/listtopic";
-import { handleRemoveTopic } from "./commands/removetopic";
 import { generateContextualResponse } from "../services/gemini-service";
 import { MQTTService } from "../services/mqtt-service";
+import { addTopicCommand } from "./commands/addtopic";
 
 function escapeMarkdown(text: string): string {
     return text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
@@ -17,16 +14,16 @@ export class Bot {
 
     private commandHandlers: {
         [command: string]: (bot: TelegramClient, message: any, args: string[], mqttService: MQTTService) => Promise<void>;
-    } = {
-        "/start": handleStart,
-        "/addtopic": handleAddTopic,
-        "/listtopic": handleList,
-        "/removetopic": handleRemoveTopic,
     };
     
     constructor(mqttService: MQTTService) {
         this.bot = new TelegramClient(telegramConfig.token, { pollingTimeout: 60 });
         this.mqttService = mqttService;
+        
+        // Initialize command handlers
+        this.commandHandlers = {
+            "/addtopic": addTopicCommand,
+        };
     }
 
     private async registerCommands() {
@@ -34,9 +31,7 @@ export class Bot {
             await this.bot.user?.setCommands([
                 { command: "start", description: "Memulai bot" },
                 { command: "help", description: "Bantuan" },
-                { command: "addtopic", description: "/addtopic [nama-farm] [nama-sensor] [topic-url]" },
-                { command: "removetopic", description: "/removetopic [nama-sensor]" },
-                { command: "listtopic", description: "/listtopic Menampilkan topic yang disubscribe" },
+                { command: "addtopic", description: "Tambah topic MQTT (format: farm_id sensor_type topic)" },
             ]);
             console.log("✅ Perintah Telegram berhasil didaftarkan.");
         } catch (error) {
@@ -53,6 +48,12 @@ export class Bot {
         });
         this.bot.on("message", async (message) => {
             const text = message.content?.trim() || "";
+            
+            // Ignore 'on' and 'off' messages
+            if (text.toLowerCase() === 'on' || text.toLowerCase() === 'off') {
+                return;
+            }
+
             const [command, ...args] = text.split(/\s+/);
             const handler = this.commandHandlers[command.toLowerCase()];
             if (handler) {

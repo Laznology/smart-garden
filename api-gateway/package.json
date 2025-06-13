@@ -4,9 +4,10 @@
   "description": "Smart Garden Bot dengan integrasi Gemini API dan database",
   "main": "dist/bot/index.js",
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
+    "start": "ts-node src/bot/bot.ts",
+    "dev": "ts-node-dev src/bot/bot.ts",
     "build": "tsc",
+    "serve": "node dist/bot/bot.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

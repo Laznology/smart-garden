@@ -1,27 +1,25 @@
 import dotenv from 'dotenv';
 import { Bot } from './bot/bot';
-import { MQTTService } from './services/mqtt-service';
 import { mqttConfig } from './config/mqtt';
-import { initializeTopics } from './services/sensor-service';
+import { SensorService } from './services/sensor-service';
 
 // Load environment variables
 dotenv.config();
 
-// Initialize MQTT Service
-const mqttService = new MQTTService(mqttConfig);
+// Initialize MQTT Service with sensor handling
+const sensorService = new SensorService(mqttConfig);
 
 // Start bot & initialize topics
-const bot = new Bot(mqttService);
+const bot = new Bot(sensorService);
 bot.start();
-initializeTopics(mqttService);
 
 // Cleanup on exit
 const cleanup = async () => {
   try {
-    await mqttService.disconnect();
+    await sensorService.disconnect();
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error saat cleanup:', error);
+    console.error('Error during cleanup:', error);
     process.exit(1);
   }
 };

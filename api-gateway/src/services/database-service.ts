@@ -2,92 +2,47 @@ import prisma from '../config/prisma';
 
 interface ContextualData {
   metadata: {
-    total_farms: number;
-    timestamp: string;
-    available_sensors: string[];
-  };
-  farms: Array<{
-    farm_info: {
-      id: number;
-      name: string;
-    };
     current_readings: {
       [key: string]: {
         value: number;
         timestamp: string;
       };
     };
-    latest_analytics: {
-      [key: string]: {
-        trend: string;
-        summary: {
-          min: number;
-          max: number;
-          mean: number;
-        };
-        period: {
-          start: string;
-          end: string;
-        };
-      };
-    };
-  }>;
+  };
 }
 
-interface CreateTopicData {
-  name: string;
-  url: string;
-  farm_id: number;
+interface SensorReading {
+  farmId: number;
   sensor_type: string;
+  value: number;
 }
+
 
 export const dbService = {
-  async createFarm(name: string) {
-    return await prisma.farm.create({
-      data: { name }
+  async saveSensorReadings(readings: SensorReading[]) {
+    return await prisma.sensorReading.createMany({
+      data: readings.map(reading => ({
+        farmId: reading.farmId,
+        sensor_type: reading.sensor_type,
+        value: reading.value
+      }))
     });
   },
-  
-  async getFarmByName(name: string) {
-    return await prisma.farm.findFirst({
-      where: { name }
-    });
-  },
-  
-  async getAllFarms() {
-    return await prisma.farm.findMany();
-  },
-  
-  async saveSensorReading(farmId: number, sensorType: string, value: number) {
-    return await prisma.sensorReading.create({
-      data: {
-        farm_id: farmId,
-        sensor_type: sensorType,
-        value
-      }
-    });
-  },
-  
-  async getLatestSensorReading(farmId: number, sensorType: string) {
+
+  async getLatestSensorReading() {
     return await prisma.sensorReading.findFirst({
-      where: {
-        farm_id: farmId,
-        sensor_type: sensorType
-      },
       orderBy: {
         createdAt: 'desc'
       }
     });
   },
-  
-  async getSensorReadingHistory(farmId: number, sensorType: string, days: number = 30) {
+
+  async getSensorReadingHistory(days: number = 30) {
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - days);
     
     return await prisma.sensorReading.findMany({
       where: {
-        farm_id: farmId,
-        sensor_type: sensorType,
         createdAt: {
           gte: daysAgo
         }
@@ -98,69 +53,26 @@ export const dbService = {
     });
   },
   
-  async getAllTopics() {
-    return await prisma.topic.findMany({
-      include: {
-        farm: true
-      }
-    });
-  },
-  
-  async createTopic(data: CreateTopicData) {
-    return await prisma.topic.create({
-      data,
-      include: {
-        farm: true
-      }
-    });
-  },
-  
-  async getTopicByName(name: string) {
-    return await prisma.topic.findFirst({
-      where: { name },
-      include: {
-        farm: true
-      }
-    });
-  },
-
-  async getTopicByUrl(url: string) {
-    return await prisma.topic.findFirst({
-      where: { url },
-      include: {
-        farm: true
-      }
-    });
-  },
-  
-  async deleteTopic(id: number) {
-    return await prisma.topic.delete({
-      where: { id }
-    });
-  },
-  
   async createAnalytic(
-    sensor_type: string,
     label: string,
     trend: string,
     min: number,
     max: number,
     mean: number,
+    sensorType: string,
     startDate: Date,
-    endDate: Date,
-    farm_id: number
+    endDate: Date
   ) {
     return await prisma.analytic.create({
       data: {
-        sensor_type,
         label,
         trend,
         min, 
         max,
         mean,
+        sensorType,
         startDate,
         endDate,
-        farm_id
       }
     });
   },
@@ -168,75 +80,81 @@ export const dbService = {
   // Data contextual untuk Gemini AI
   async getContextualData(): Promise<ContextualData> {
     try {
-      // Ambil semua farm beserta relasinya
-      const farms = await prisma.farm.findMany({
-        include: {
-          sensor_reading: {
-            orderBy: {
-              createdAt: 'desc'
-            },
-            distinct: ['sensor_type'],
-            where: {
-              sensor_type: {
-                in: ['temperature', 'humidity', 'soil_moisture', 'light']
-              }
-            }
-          },
-          Analytic: {
-            orderBy: {
-              createdAt: 'desc'
-            },
-            where: {
-              sensor_type: {
-                in: ['temperature', 'humidity', 'soil_moisture', 'light']
-              }
-            },
-            take: 1
-          }
-        }
-      });
-
-      const contextData = farms.map(farm => ({
-        farm_info: {
-          id: farm.id,
-          name: farm.name
-        },
-        current_readings: farm.sensor_reading.reduce<{[key: string]: { value: number; timestamp: string }}>((acc, reading) => {
-          acc[reading.sensor_type] = {
-            value: reading.value,
-            timestamp: reading.createdAt.toLocaleString('id-ID')
-          };
-          return acc;
-        }, {}),
-        latest_analytics: farm.Analytic.reduce<{[key: string]: { trend: string; summary: { min: number; max: number; mean: number }; period: { start: string; end: string } }}>((acc, analytic) => {
-          acc[analytic.sensor_type] = {
-            trend: analytic.trend,
-            summary: {
-              min: analytic.min,
-              max: analytic.max,
-              mean: analytic.mean
-            },
-            period: {
-              start: analytic.startDate.toLocaleString('id-ID'),
-              end: analytic.endDate.toLocaleString('id-ID')
-            }
-          };
-          return acc;
-        }, {})
-      }));
-
+      const history = await this.getSensorReadingHistory(30);
       return {
         metadata: {
-          total_farms: farms.length,
-          timestamp: new Date().toLocaleString('id-ID'),
-          available_sensors: ['temperature', 'humidity', 'soil_moisture', 'light']
-        },
-        farms: contextData
+          current_readings: history.reduce((acc, reading) => {
+            acc[reading.sensor_type] = {
+              value: reading.value,
+              timestamp: reading.createdAt.toISOString()
+            };
+            return acc;
+          }, {} as { [key: string]: { value: number; timestamp: string } })
+        }
       };
-      
     } catch (error) {
       console.error('Error in getContextualData:', error);
       throw error;
     }
+  },
+
+  async getFarmByName(name: string) {
+    return await prisma.farm.findFirst({
+      where: { name }
+    });
+  },
+
+  async createFarm(name: string) {
+    return await prisma.farm.create({
+      data: { name }
+    });
+  },
+
+  async ensureFarmExists(name: string) {
+    let farm = await this.getFarmByName(name);
+    if (!farm) {
+      farm = await this.createFarm(name);
+      console.log(`✨ Created new farm: ${name}`);
+    }
+    return farm;
+  },
+
+  async addTopic(farmName: string, sensorType: string, topic: string) {
+    // Pastikan farm exists sebelum menambah topic
+    const farm = await this.ensureFarmExists(farmName);
+    
+    return await prisma.topic.create({
+      data: {
+        farmId: farm.id,
+        sensorType,
+        topic
+      }
+    });
+  },
+
+  async getTopics(farmId?: number) {
+    return await prisma.topic.findMany({
+      where: farmId ? { farmId } : undefined,
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+  },
+
+  async removeTopic(farmId: number, sensorType: string) {
+    return await prisma.topic.delete({
+      where: {
+        farmId_sensorType: {
+          farmId,
+          sensorType
+        }
+      }
+    });
+  },
+
+  async getTopicByPath(topicPath: string) {
+    return await prisma.topic.findFirst({
+      where: { topic: topicPath }
+    });
   }
 };
