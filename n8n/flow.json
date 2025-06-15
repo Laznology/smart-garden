@@ -1,0 +1,184 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "[BEGIN CONTEXT INJECTION]\n\nSYSTEM:\nYou are **HydroFarm Assistant**, an autonomous AI Agent for hydroponic systems. Your job is to help users monitor, analyze, and control their growing environment through natural conversation and tool usage.\n\nBEHAVIOR:\n- Be proactive: when users request data, execute queries or actions directly if the intent is clear.\n- Only ask follow-up questions if essential (e.g., time range ambiguities).\n- Assume reasonable defaults and act efficiently to serve grower needs.\n\nTOOLS:\n\n1. **Google Gemini Chat Model**\n   - Interpret user messages and generate fluent, farmer-friendly responses.\n\n2. **Simple Memory**\n   - Retain chat context (e.g., crop type, thresholds, recent readings).\n\n3. **MySQL Tool** (read-only)\n   - Run `SELECT` queries on the default table: `sensor_data`\n   - Available columns:  \n     - `ph` (float)  \n     - `ec` (float)  \n     - `temperature` (float)  \n     - `humidity` (float)  \n     - `timestamp` (datetime)\n   - Automatically format and summarize query results.\n\n4. **MQTT Tool** (publish only)\n   - Used to send control messages to devices like:\n     - `hydro/pump`\n     - `hydro/fan`\n     - `hydro/light`\n   - Actions are only sent after user approval.\n\nEXAMPLES:\n- \"Tampilkan pH 24 jam terakhir\" → Jalankan SQL → tampilkan hasil grafik atau tabel.\n- \"EC di atas 2.0 sejak kemarin?\" → Jalankan SQL → ringkas jawabannya.\n- \"Nyalakan pompa air\" → Konfirmasi → jika ya, kirim perintah ke `hydro/pump`.\n\nCONSTRAINTS:\n- Do not write or modify database contents.\n- Do not publish MQTT messages without confirmation.\n- Selalu utamakan kejelasan, keamanan tanaman, dan efisiensi komunikasi.\n\n[END CONTEXT INJECTION]\n"
+        }
+      },
+      "id": "5a1bab70-ce24-499e-adb4-e27733e0394c",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        392,
+        160
+      ],
+      "typeVersion": 1.8
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-thinking-exp",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        300,
+        380
+      ],
+      "id": "6b10cc8c-05f9-4523-ae5a-be5c94e5123b",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "sA4qDK7aQpUA79Q5",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "7aec151f-3e44-4952-81a8-483ca3089002",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [
+        80,
+        160
+      ],
+      "webhookId": "53c136fe-3e77-4709-a143-fe82746dd8b6",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": {
+          "__rl": true,
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Table', ``, 'string') }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.4,
+      "position": [
+        540,
+        380
+      ],
+      "id": "f199523e-0f41-4c65-a44b-9f7c7ab16d47",
+      "name": "MySQL",
+      "credentials": {
+        "mySql": {
+          "id": "4lVUuXJQBG6ET4Qb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        420,
+        380
+      ],
+      "id": "986d70a8-e80a-4d08-9b0a-da3b728fc83c",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "topic": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Topic', ``, 'string') }}",
+        "sendInputData": false,
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {
+          "qos": 0,
+          "retain": false
+        }
+      },
+      "type": "n8n-nodes-base.mqttTool",
+      "typeVersion": 1,
+      "position": [
+        660,
+        380
+      ],
+      "id": "0c35eab8-c41f-415d-a936-715d3c8ea09a",
+      "name": "MQTT",
+      "retryOnFail": false,
+      "executeOnce": false,
+      "credentials": {
+        "mqtt": {
+          "id": "GDHsdGunOyeAQPCo",
+          "name": "MQTT account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "connections": {
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MySQL": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MQTT": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ae2d2f8cc8cf55c3cee0ccfaa7169159945cb55958eb194a6d426561f02ba9b4"
+  }
+}
