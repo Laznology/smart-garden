@@ -2,16 +2,18 @@
   "nodes": [
     {
       "parameters": {
+        "promptType": "define",
+        "text": "=Please answer non-technical way.\n====\nUSER QUESTION:  {{ $json.chatInput }}",
         "options": {
-          "systemMessage": "[BEGIN CONTEXT INJECTION]\n\nSYSTEM:\nYou are **HydroFarm Assistant**, an autonomous AI Agent for hydroponic systems. Your job is to help users monitor, analyze, and control their growing environment through natural conversation and tool usage.\n\nBEHAVIOR:\n- Be proactive: when users request data, execute queries or actions directly if the intent is clear.\n- Only ask follow-up questions if essential (e.g., time range ambiguities).\n- Assume reasonable defaults and act efficiently to serve grower needs.\n\nTOOLS:\n\n1. **Google Gemini Chat Model**\n   - Interpret user messages and generate fluent, farmer-friendly responses.\n\n2. **Simple Memory**\n   - Retain chat context (e.g., crop type, thresholds, recent readings).\n\n3. **MySQL Tool** (read-only)\n   - Run `SELECT` queries on the default table: `sensor_data`\n   - Available columns:  \n     - `ph` (float)  \n     - `ec` (float)  \n     - `temperature` (float)  \n     - `humidity` (float)  \n     - `timestamp` (datetime)\n   - Automatically format and summarize query results.\n\n4. **MQTT Tool** (publish only)\n   - Used to send control messages to devices like:\n     - `hydro/pump`\n     - `hydro/fan`\n     - `hydro/light`\n   - Actions are only sent after user approval.\n\nEXAMPLES:\n- \"Tampilkan pH 24 jam terakhir\" → Jalankan SQL → tampilkan hasil grafik atau tabel.\n- \"EC di atas 2.0 sejak kemarin?\" → Jalankan SQL → ringkas jawabannya.\n- \"Nyalakan pompa air\" → Konfirmasi → jika ya, kirim perintah ke `hydro/pump`.\n\nCONSTRAINTS:\n- Do not write or modify database contents.\n- Do not publish MQTT messages without confirmation.\n- Selalu utamakan kejelasan, keamanan tanaman, dan efisiensi komunikasi.\n\n[END CONTEXT INJECTION]\n"
+          "systemMessage": "🧠 HydroFarm DB Assistant (Expert Level)\n🎯 Tujuan\nAnda adalah asisten database khusus untuk tim hidroponik — mulai dari agronomis, manajer greenhouse, hingga peneliti.\nTugas Anda adalah menjalankan query SQL untuk membaca dan mengelola data sensor hidroponik, agar mendukung keputusan operasional berbasis data.\n\n🔧 Alur Eksekusi Tool (WAJIB dan BERURUTAN)\n❗ Selalu jalankan Tool 1 dan Tool 2 sebelum Tool 3 — kecuali hanya membaca cache/metainfo sebelumnya.\n\n1_Get DB Schema and Tables List\n→ Validasi bahwa tabel sensor_data tersedia di skema db_remote.\n\n2_Get Table Definition\n→ Periksa definisi kolom dan tipe data tabel sensor_data.\n\n3_Execute actual query\n→ Jalankan perintah SQL sesuai kebutuhan:\n\n✅ SELECT: untuk analisis dan visualisasi data\n\n⚠️ INSERT, UPDATE, DELETE: hanya jika konteksnya membersihkan data duplikat, menambahkan data valid, atau menyesuaikan data yang salah format\n\n⚙️ Aturan Query\nGunakan wildcard (%) dan LOWER() untuk pencarian berbasis teks.\n\nGunakan agregasi (AVG, MIN, MAX) untuk ringkasan data.\n\nTerapkan filter waktu seperti:\n\n“hari ini”, “24 jam terakhir”, “minggu ini”, dll.\n\nGunakan batasan query (LIMIT, WHERE) saat membersihkan data.\n\n🧠 Contoh Interpretasi\nPertanyaan\tJawaban Ringkasan\n“Apakah EC melebihi 2.5 dalam 3 hari terakhir?”\t✅ “Ya, EC mencapai puncak 2.8 pada 14 Juni pukul 13.00.”\n“Berapa suhu rata-rata hari ini?”\t🌡️ “Suhu rata-rata hari ini adalah 26.3°C.”\n“Adakah pH turun di bawah 5.5 minggu ini?”\t🔍 “Tidak, pH tetap stabil di atas 5.8 selama 7 hari terakhir.”\n“Hapus entri kosong dari kolom suhu”\t🧹 “5 entri tanpa nilai suhu berhasil dihapus.”\n\n❌ Larangan Keras\n🚫 Jangan tampilkan SQL mentah, nama kolom, atau istilah teknis (varchar, schema, dll.) ke pengguna.\n\n🚫 Jangan lakukan perubahan data tanpa konteks bersih-bersih atau validasi format.\n\n🚫 Jangan jalankan query destruktif secara otomatis tanpa analisis.\n\n✅ Karakter Asisten\nCerdas, efisien, dan ramah untuk non-teknikal user.\n\nFokus pada pemahaman praktis dan manfaat langsung untuk petani, teknisi lapangan, dan tim greenhouse.\n\n"
         }
       },
       "id": "5a1bab70-ce24-499e-adb4-e27733e0394c",
       "name": "AI Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "position": [
-        392,
-        160
+        472,
+        720
       ],
       "typeVersion": 1.8
     },
@@ -23,8 +25,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        300,
-        380
+        260,
+        940
       ],
       "id": "6b10cc8c-05f9-4523-ae5a-be5c94e5123b",
       "name": "Google Gemini Chat Model",
@@ -43,44 +45,19 @@
       "name": "When chat message received",
       "type": "@n8n/n8n-nodes-langchain.chatTrigger",
       "position": [
-        80,
-        160
+        40,
+        720
       ],
       "webhookId": "53c136fe-3e77-4709-a143-fe82746dd8b6",
       "typeVersion": 1.1
-    },
-    {
-      "parameters": {
-        "operation": "select",
-        "table": {
-          "__rl": true,
-          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Table', ``, 'string') }}",
-          "mode": "name"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.mySqlTool",
-      "typeVersion": 2.4,
-      "position": [
-        540,
-        380
-      ],
-      "id": "f199523e-0f41-4c65-a44b-9f7c7ab16d47",
-      "name": "MySQL",
-      "credentials": {
-        "mySql": {
-          "id": "4lVUuXJQBG6ET4Qb",
-          "name": "MySQL account"
-        }
-      }
     },
     {
       "parameters": {},
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        420,
-        380
+        380,
+        940
       ],
       "id": "986d70a8-e80a-4d08-9b0a-da3b728fc83c",
       "name": "Simple Memory"
@@ -98,8 +75,8 @@
       "type": "n8n-nodes-base.mqttTool",
       "typeVersion": 1,
       "position": [
-        660,
-        380
+        940,
+        860
       ],
       "id": "0c35eab8-c41f-415d-a936-715d3c8ea09a",
       "name": "MQTT",
@@ -107,11 +84,201 @@
       "executeOnce": false,
       "credentials": {
         "mqtt": {
-          "id": "GDHsdGunOyeAQPCo",
+          "id": "YxtVavMiPH2yuUDi",
           "name": "MQTT account"
         }
       },
       "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "topics": "n8n/p5/#",
+        "options": {
+          "jsonParseBody": false
+        }
+      },
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        360
+      ],
+      "id": "964f2c57-1626-41f7-96a9-99521504dfa7",
+      "name": "MQTT Trigger",
+      "credentials": {
+        "mqtt": {
+          "id": "YxtVavMiPH2yuUDi",
+          "name": "MQTT account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const topic = $input.item.json.topic;\nconst topicParts = topic.split(\"/\");\nconst farmNameIndex = topicParts.indexOf(\"p5\") + 1;\nconst farmName = farmNameIndex < topicParts.length ? topicParts[farmNameIndex] : \"unknown\";\n\nconst sensorType = topicParts[topicParts.length - 1];\nreturn {\n  json: {\n    fullTopic: topic,\n    subTopic: topicParts.slice(2).join(\"/\"), \n    payload: $input.item.json.message,\n    farmName: farmName,\n    sensorType: sensorType,\n    value: parseFloat($input.item.json.message) || $input.item.json.message\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        360
+      ],
+      "id": "69e91683-788c-465e-a2fa-3d41b4daee3a",
+      "name": "Slicing Topic"
+    },
+    {
+      "parameters": {
+        "content": "## 🔄 Sensor Stream\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nMenerima data dari MQTT, parsing payload, dan simpan ke database.  ",
+        "height": 340,
+        "width": 740,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        240
+      ],
+      "id": "4b8a1d35-35b7-46c1-a8f3-4e5dbe269226",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get list of all tables with their schema in the database",
+        "operation": "executeQuery",
+        "query": "SELECT \n    table_schema,\n    table_name\nFROM \n    information_schema.tables\nWHERE \n    table_type = 'BASE TABLE'\n    AND table_schema NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')\nORDER BY \n    table_schema, table_name;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.4,
+      "position": [
+        560,
+        940
+      ],
+      "id": "cb418184-427e-446f-bafa-d4dcea210be9",
+      "name": "get_db_schema_and_tables",
+      "credentials": {
+        "mySql": {
+          "id": "4lVUuXJQBG6ET4Qb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get table definition to find all columns and types",
+        "operation": "executeQuery",
+        "query": "\nSELECT \n    c.column_name,\n    c.column_comment,\n    c.data_type,\n    c.is_nullable,\n    c.column_default,\n    tc.constraint_type,  \n    kcu.table_name AS referenced_table,\n    kcu.column_name AS referenced_column\nFROM \n    information_schema.columns c\nLEFT JOIN \n    information_schema.key_column_usage kcu\n    ON c.table_name = kcu.table_name\n    AND c.column_name = kcu.column_name\nLEFT JOIN \n    information_schema.table_constraints tc\n    ON kcu.constraint_name = tc.constraint_name\n    AND tc.constraint_type = 'FOREIGN KEY'\nWHERE \n  c.table_name = '{{ $fromAI(\"table_name\") }}'\n  AND c.table_schema = '{{ $fromAI(\"schema_name\") }}'\nORDER BY \n    c.ordinal_position;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.4,
+      "position": [
+        720,
+        920
+      ],
+      "id": "746fd554-ad9e-410d-a20f-754485c12da8",
+      "name": "get_table_definition",
+      "credentials": {
+        "mySql": {
+          "id": "4lVUuXJQBG6ET4Qb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get all the data from sql, make sure you append the tables with correct schema. Every table is associated with some schema in the database.",
+        "operation": "executeQuery",
+        "query": "{{ $fromAI(\"sql_query\", \"SQL Query\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySqlTool",
+      "typeVersion": 2.4,
+      "position": [
+        860,
+        940
+      ],
+      "id": "5d74d8f6-44aa-46cf-a2e4-f9ed2dfdb088",
+      "name": "execute_actual_query",
+      "credentials": {
+        "mySql": {
+          "id": "4lVUuXJQBG6ET4Qb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "table": {
+          "__rl": true,
+          "value": "sensor_readings",
+          "mode": "list",
+          "cachedResultName": "sensor_readings"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "farmId",
+              "value": "={{ $json.farmName }}"
+            },
+            {
+              "column": "sensor_type",
+              "value": "={{ $json.sensorType }}"
+            },
+            {
+              "column": "value",
+              "value": "={{ $json.value }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.4,
+      "position": [
+        480,
+        360
+      ],
+      "id": "6cc07d03-e1cf-4c80-ae7f-7cdf896b80f2",
+      "name": "Saving -> DB",
+      "credentials": {
+        "mySql": {
+          "id": "4lVUuXJQBG6ET4Qb",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 👾 AI Agent\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nStill need a lil adjustment:",
+        "height": 500,
+        "width": 1180,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        660
+      ],
+      "id": "9f46de06-77f6-49ac-8691-1acd36131fd4",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        1140
+      ],
+      "id": "4ef9be4f-af72-433e-bf10-080ab25684d5",
+      "name": "Sticky Note2"
     }
   ],
   "connections": {
@@ -142,17 +309,6 @@
         ]
       ]
     },
-    "MySQL": {
-      "ai_tool": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Simple Memory": {
       "ai_memory": [
         [
@@ -165,6 +321,61 @@
       ]
     },
     "MQTT": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MQTT Trigger": {
+      "main": [
+        [
+          {
+            "node": "Slicing Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slicing Topic": {
+      "main": [
+        [
+          {
+            "node": "Saving -> DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_db_schema_and_tables": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_table_definition": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "execute_actual_query": {
       "ai_tool": [
         [
           {
